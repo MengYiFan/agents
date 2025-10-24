@@ -24,7 +24,8 @@ This repository contains a Mastra project scaffolded in an offline environment. 
 ## Project Structure
 
 - `mastra.config.ts` – Mastra runtime configuration.
-- `src/agents` – Example agent definitions.
+- `src/agents` – Example agent definitions, including a prompt library agent that reads Markdown prompt files.
 - `src/index.ts` – Entry point that registers the agents with Mastra.
+- `prompts` – Markdown prompt definitions consumed by the prompt library agent.
 
 > **Note:** Initializing the project via `npx mastra@latest init` requires internet access to download the CLI. The command could not be executed in this environment, so the scaffold mirrors the default structure manually.
