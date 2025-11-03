@@ -2,9 +2,10 @@ import { Mastra } from "mastra";
 import { echoAgent } from "./agents/echoAgent.js";
 import { summarizerAgent } from "./agents/summarizerAgent.js";
 import { promptLibraryAgent } from "./agents/promptLibraryAgent.js";
+import { codeReviewAgent } from "./agents/codeReviewAgent.js";
 
 const mastra = new Mastra({
-  agents: [echoAgent, summarizerAgent, promptLibraryAgent],
+  agents: [echoAgent, summarizerAgent, promptLibraryAgent, codeReviewAgent],
 });
 
 export default mastra;
