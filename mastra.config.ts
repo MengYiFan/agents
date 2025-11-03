@@ -7,6 +7,7 @@ export default defineConfig({
     "echo-agent",
     "summarizer-agent",
     "prompt-library-agent",
+    "code-review-agent",
     "code-guidelines-mcp",
   ],
   plugins: [],
