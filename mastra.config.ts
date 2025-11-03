@@ -8,6 +8,7 @@ export default defineConfig({
     "summarizer-agent",
     "prompt-library-agent",
     "code-review-agent",
+    "code-guidelines-mcp",
   ],
   plugins: [],
 });
