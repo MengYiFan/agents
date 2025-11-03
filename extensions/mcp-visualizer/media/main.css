@@ -1,0 +1,125 @@
+body {
+  font-family: var(--vscode-font-family);
+  color: var(--vscode-foreground);
+  padding: 0;
+  margin: 0;
+}
+
+.tab-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.tab-header {
+  display: flex;
+  border-bottom: 1px solid var(--vscode-editorWidget-border);
+}
+
+.tab-header button {
+  flex: 1;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.tab-header button.active {
+  border-bottom: 2px solid var(--vscode-textLink-foreground);
+  color: var(--vscode-textLink-foreground);
+}
+
+.tab-content {
+  flex: 1;
+  display: none;
+  overflow: auto;
+  padding: 12px 16px;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+.mcp-list {
+  display: flex;
+  gap: 16px;
+}
+
+.mcp-list nav {
+  min-width: 220px;
+  border-right: 1px solid var(--vscode-editorWidget-border);
+  padding-right: 12px;
+}
+
+.mcp-item {
+  display: block;
+  padding: 6px 8px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  cursor: pointer;
+}
+
+.mcp-item.active {
+  background: var(--vscode-editor-selectionBackground);
+  color: var(--vscode-editor-selectionForeground);
+}
+
+.mcp-content {
+  flex: 1;
+  padding-left: 16px;
+}
+
+.mcp-content h1 {
+  font-size: 20px;
+}
+
+.diagram-container {
+  display: flex;
+  gap: 24px;
+}
+
+.diagram {
+  flex: 2;
+}
+
+.diagram svg {
+  width: 100%;
+  height: auto;
+}
+
+.stage-info {
+  flex: 1;
+  border-left: 1px solid var(--vscode-editorWidget-border);
+  padding-left: 16px;
+}
+
+.stage-info h3 {
+  margin-top: 0;
+}
+
+.branch-node,
+.stage-node {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.branch-node:hover,
+.stage-node:hover {
+  transform: scale(1.05);
+}
+
+.stage-node.active rect,
+.branch-node.active ellipse {
+  stroke: var(--vscode-textLink-foreground);
+  stroke-width: 3;
+}
+
+.stage-node:hover rect {
+  stroke: var(--vscode-textLink-foreground);
+}
+
+.branch-node:hover ellipse {
+  stroke: var(--vscode-textLink-foreground);
+}
