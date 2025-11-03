@@ -26,11 +26,33 @@ In addition to the base scaffold, the project bundles a **Grafana MCP integratio
 ## Project Structure
 
 - `mastra.config.ts` – Mastra runtime configuration.
-- `src/agents` – Example agent definitions, including a prompt library agent that reads Markdown prompt files.
+- `src/agents` – Example agent definitions used by the runtime, including:
+  - `promptLibraryAgent.ts` for serving Markdown prompt files from the `prompts/` directory.
+  - `codeGuidelinesMcp.ts` for stack-aware `.rules` injection.
 - `src/index.ts` – Entry point that registers the agents with Mastra.
+
 - `prompts` – Markdown prompt definitions consumed by the prompt library agent.
+- `docs/` – Extended documentation for Mastra agents and supporting tools.
 - `src/integrations/grafanaMcp.ts` – Low-level Grafana client that handles Google IAP authentication, redirect following, cookie persistence, and REST helpers.
 - `src/agents/grafanaMcpAgent.ts` – Mastra agent exposing the Grafana MCP client as structured tools for dashboard and datasource inspection workflows.
+
+> **Note:** Initializing the project via `npx mastra@latest init` requires internet access to download the CLI. The command could not be executed in this environment, so the scaffold mirrors the default structure manually.
+
+## Available Agents
+
+### Prompt Library Agent
+
+The prompt library agent surfaces Markdown prompt files from the `prompts/` directory. Once the Mastra runtime is running you can query it to list prompt names or retrieve prompt content for downstream tooling.
+
+### Code Guidelines MCP
+
+The `code-guidelines-mcp` agent exposes the `injectCodeRulesDocument` tool to create or update the project’s `.rules` code-standard document. It inspects `package.json` and tailors the generated rules for Nuxt 2, Vue 2, MidwayJS, and Egg.js projects while still supporting custom content overrides.
+
+See the dedicated guide at [`docs/code-guidelines-mcp.md`](./docs/code-guidelines-mcp.md) for invocation examples, overwrite behavior, fallback detection notes, and customization tips.
+
+## Documentation
+
+- [`docs/code-guidelines-mcp.md`](./docs/code-guidelines-mcp.md) – Comprehensive usage instructions for the Code Guidelines MCP, including overwrite handling, fallback behavior, and custom content support.
 
 ## Grafana MCP 自动登录实现原理
 
