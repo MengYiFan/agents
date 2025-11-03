@@ -3,9 +3,10 @@ import { echoAgent } from "./agents/echoAgent.js";
 import { summarizerAgent } from "./agents/summarizerAgent.js";
 import { promptLibraryAgent } from "./agents/promptLibraryAgent.js";
 import { gitMcpAgent } from "./agents/gitMcpAgent.js";
+import { grafanaMcpAgent } from "./agents/grafanaMcpAgent.js";
 
 const mastra = new Mastra({
-  agents: [echoAgent, summarizerAgent, promptLibraryAgent, gitMcpAgent],
+  agents: [echoAgent, summarizerAgent, promptLibraryAgent, gitMcpAgent, grafanaMcpAgent],
 });
 
 export default mastra;
