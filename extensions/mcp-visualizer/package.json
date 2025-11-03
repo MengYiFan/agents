@@ -1,0 +1,48 @@
+{
+  "name": "mcp-visualizer",
+  "displayName": "MCP 可视化助手",
+  "description": "提供 Mastra MCP 功能文档查看与 Git 分支流程可视化操作的 VS Code 扩展。",
+  "version": "0.0.1",
+  "publisher": "mastra-labs",
+  "engines": {
+    "vscode": "^1.84.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:mcpVisualizer.view"
+  ],
+  "main": "dist/extension.js",
+  "contributes": {
+    "views": {
+      "explorer": [
+        {
+          "id": "mcpVisualizer.view",
+          "name": "MCP 可视化"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "mcpVisualizer.refresh",
+        "title": "刷新 MCP 可视化"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "@types/vscode": "^1.84.0",
+    "typescript": "^5.3.3",
+    "vsce": "^2.15.0"
+  },
+  "dependencies": {
+    "marked": "^9.1.6"
+  }
+}
