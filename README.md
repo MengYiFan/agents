@@ -24,10 +24,12 @@ This repository contains a Mastra project scaffolded in an offline environment. 
 ## Project Structure
 
 - `mastra.config.ts` – Mastra runtime configuration.
-- `src/agents` – Example agent definitions, including a prompt library agent and a code-guidelines MCP that injects a `.rules` specification tailored to the detected tech stack.
+- `src/agents/` – Example agent definitions for the runtime.
+  - `promptLibraryAgent.ts` – Serves Markdown prompt files from the `prompts/` directory.
+  - `codeGuidelinesMcp.ts` – Provides the stack-aware `.rules` injection tool.
 - `src/index.ts` – Entry point that registers the agents with Mastra.
-- `prompts` – Markdown prompt definitions consumed by the prompt library agent.
-- `docs/` – Additional documentation for agents, including stack-aware guideline usage notes.
+- `prompts/` – Markdown prompt definitions consumed by the prompt library agent.
+- `docs/` – Extended documentation for Mastra agents, including the guidelines MCP usage guide.
 
 > **Note:** Initializing the project via `npx mastra@latest init` requires internet access to download the CLI. The command could not be executed in this environment, so the scaffold mirrors the default structure manually.
 
@@ -39,4 +41,6 @@ The prompt library agent surfaces Markdown prompt files from the `prompts/` dire
 
 ### Code Guidelines MCP
 
-The `code-guidelines-mcp` agent exposes a single tool, `injectCodeRulesDocument`, which generates or updates the project’s `.rules` code-standard document. The agent inspects `package.json` and tailors the generated rules for Nuxt 2, Vue 2, MidwayJS, and Egg.js projects. Refer to [`docs/code-guidelines-mcp.md`](./docs/code-guidelines-mcp.md) for detailed usage instructions, overwrite behavior, and customization options.
+The `code-guidelines-mcp` agent exposes the `injectCodeRulesDocument` tool to create or update the project’s `.rules` code-standard document. It inspects `package.json` and tailors the generated rules for Nuxt 2, Vue 2, MidwayJS, and Egg.js projects while still supporting custom content overrides.
+
+See the dedicated guide at [`docs/code-guidelines-mcp.md`](./docs/code-guidelines-mcp.md) for invocation examples, overwrite behavior, fallback detection notes, and customization tips.
