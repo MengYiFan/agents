@@ -8,7 +8,7 @@ The project ships with a dedicated code review MCP agent that layers project-spe
 
 - **Project instructions priority** – The agent automatically loads `instructions.md` and applies its guidance before the default prompt so repository-specific rules always take precedence.
 - **Fallback prompt** – If no project instructions are found, the agent falls back to `prompts/codeReviewDefault.md`, which enforces Chinese-language reports, severity grading (P0–P2), and actionable feedback.
-- **Mastra registration** – The agent is registered in `src/index.ts`, so it becomes available as soon as the Mastra runtime starts.
+- **Mastra registration** – The agent is registered in `src/index.ts` and declared in `mastra.config.ts`, so it becomes available as soon as the Mastra runtime starts.
 
 ### Usage
 
