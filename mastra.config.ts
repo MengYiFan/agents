@@ -9,6 +9,8 @@ export default defineConfig({
     "prompt-library-agent",
     "code-review-agent",
     "code-guidelines-mcp",
+    "git-mcp-agent",
+    "grafana-mcp-agent",
   ],
   plugins: [],
 });

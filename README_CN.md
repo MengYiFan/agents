@@ -1,50 +1,72 @@
 # Mastra Agents 项目
 
-此仓库是在离线环境中脚手架生成的 Mastra 项目示例，包含示例代理与配置文件，便于在恢复依赖后快速开始开发。
+该仓库在离线环境下手工还原了 Mastra 项目骨架，内置示例代理、Grafana 集成以及一个 VS Code 扩展，方便在恢复网络后迅速进入开发节奏。
 
 ## 快速开始
 
-1. 安装依赖（需要访问 npm registry）：
+1. **安装依赖**（需要访问 npm registry）：
    ```bash
    npm install
    ```
-2. 启动 Mastra 开发服务器：
+2. **启动 Mastra 开发服务器**：
    ```bash
    npm run dev
    ```
-3. 构建项目：
+3. **构建 TypeScript 源码**：
    ```bash
    npm run build
    ```
-4. 运行编译后的产物：
+4. **运行编译产物**：
    ```bash
    npm start
    ```
 
-## 项目结构
+> 💡 由于初始化环境无法执行 `npx mastra@latest init`，仓库结构由脚本手动搭建；待依赖安装完成后，上述命令与官方脚手架保持一致。
 
-- `mastra.config.ts` —— Mastra 运行时配置。
-- `src/agents` —— 示例代理定义，包括读取 Markdown 提示词文件的提示库代理。
-- `src/index.ts` —— 将代理注册到 Mastra 的入口文件。
-- `prompts` —— 被提示库代理读取的 Markdown 提示词定义。
+## 目录结构
 
-> **注意：** 使用 `npx mastra@latest init` 初始化项目需要联网下载 CLI。本环境无法执行该命令，因此仓库手动还原了默认的项目结构。
+```
+.
+├── docs/                       # MCP 代理与集成的扩展文档
+├── extensions/
+│   └── mcp-visualizer/         # VS Code 扩展：展示 MCP 文档与 Git 生命周期
+├── prompts/                    # 被提示库代理读取的 Markdown 提示词
+├── src/
+│   ├── agents/
+│   │   ├── examples/           # 基础示例代理（Echo、Summarizer、Prompt Library）
+│   │   ├── integrations/       # Git、Grafana 等外部系统集成代理
+│   │   ├── quality/            # 代码评审、规范生成类代理
+│   │   └── index.ts            # 统一导出所有代理供运行时注册
+│   ├── integrations/           # Grafana MCP 等底层服务客户端
+│   └── index.ts                # Mastra 运行时入口
+├── instructions.md             # 被代码审查代理优先加载的项目指令
+└── mastra.config.ts            # Mastra 运行时配置
+```
 
-## 开发与调试
+`src/agents/index.ts` 负责集中导出代理实例，使 `src/index.ts` 仅专注于初始化 Mastra 运行时；同时将代理按用途拆分到 `examples`、`integrations`、`quality` 子目录，方便后续扩展与维护。
 
-1. **安装依赖**：在能够访问网络时执行 `npm install`，将 TypeScript 与 Mastra 所需的依赖下载到本地。
-2. **编写时进行类型检查**：运行 `npx tsc --noEmit` 进行一次性检查，或使用 `npx tsc --watch` 持续监听文件变更，从而在运行代理之前先发现 TypeScript 错误。
-3. **启动 Mastra 开发服务器**：通过 `npm run dev` 启动 `mastra dev`。当你修改 `src/` 下的文件时，服务器会自动热重载，并在依赖安装完成后提供 Mastra UI 或 HTTP 接口以调用代理。
-4. **运行编译产物**：先执行 `npm run build`，再运行 `npm start`，以启动 `dist/` 目录中的编译输出。这与生产环境的运行方式一致。
-5. **使用 Node.js 调试**：完成构建后，通过 `node --inspect-brk dist/index.js` 以调试模式启动应用，随后在你喜欢的调试工具（如 Chrome DevTools、VS Code 等）中附加调试器，逐步排查代理逻辑。
-6. **添加日志**：在代理处理器（例如 `src/agents/*.ts`）中插入 `console.log`，记录执行过程。无论使用 `npm run dev` 还是 `npm start`，终端都会显示这些日志。
+## 主要代理与能力
 
-## 在 VS Code 中使用代理
+- **Prompt Library Agent**（`src/agents/examples/promptLibraryAgent.ts`）：提供 `prompts/` 目录下的提示词查询接口。
+- **Code Review Agent**（`src/agents/quality/codeReviewAgent.ts`）：优先加载 `instructions.md` 再合并 `prompts/codeReviewDefault.md`，确保审查报告遵循项目规范。
+- **Code Guidelines MCP**（`src/agents/quality/codeGuidelinesMcp.ts`）：解析 `package.json`，自动生成 `.rules` 代码规范文档，适配 Nuxt 2、Vue 2、MidwayJS、Egg.js 等框架。
+- **Git MCP Agent**（`src/agents/integrations/gitMcpAgent.ts`）：封装 Git 常用命令、研发生命周期提醒以及可选的预提交审查流程。
+- **Grafana MCP Agent**（`src/agents/integrations/grafanaMcpAgent.ts`）：调用 `src/integrations/grafanaMcp.ts`，自动完成 Google IAP 登录、Cookie 维护与仪表盘 API 调用。
 
-1. **打开工作区**：启动 VS Code，选择「文件 → 打开文件夹…」，加载此仓库以便编辑器识别 TypeScript 源码与相关配置。
-2. **安装常用扩展**：VS Code 自带的 TypeScript 功能已能满足基本需求，但建议额外启用「ESLint」与「Prettier - Code formatter」等扩展，以便在编写代理时及时发现格式或语法问题。
-3. **使用集成终端运行命令**：通过「终端 → 新建终端」执行 `npm install`、`npm run dev` 或 `npx tsc --watch` 等命令，将运行输出与代码标签页放在同一界面。
-4. **创建调试配置**：打开「运行和调试」面板，新增 `launch.json` 并填入类似的 Node.js 配置：
+更多细节可参考 `docs/` 目录，例如 [`docs/code-guidelines-mcp.md`](./docs/code-guidelines-mcp.md) 中提供的调用示例与自定义说明。
+
+## 开发与调试建议
+
+- **类型检查**：执行 `npx tsc --noEmit` 进行一次性检查，或使用 `npx tsc --watch` 持续监听文件变动。
+- **调试日志**：在代理处理函数内增加 `console.log`，无论通过 `npm run dev` 还是 `npm start` 启动，都可在终端查看输出。
+- **Node.js 调试模式**：构建完成后使用 `node --inspect-brk dist/index.js`，随后在 Chrome DevTools、VS Code 等工具中附加调试器。
+- **快速体验代理**：执行 `node dist/index.js`（或 `npm start`）将触发示例脚本，展示 Echo 与 Summarizer 代理的调用结果。
+
+## VS Code 使用指南
+
+1. **打开工作区**：在 VS Code 中选择「文件 → 打开文件夹…」，定位到仓库根目录。
+2. **推荐扩展**：启用 TypeScript 内置功能，并安装「ESLint」「Prettier - Code formatter」等扩展保持代码风格一致。
+3. **调试配置**：在 `launch.json` 中新增如下配置以调试开发服务器：
    ```json
    {
      "type": "node",
@@ -55,5 +77,18 @@
      "console": "integratedTerminal"
    }
    ```
-   通过该配置启动后，VS Code 会在调试器下运行 `npm run dev`，你可以直接在 `src/` 目录中设置断点。
-5. **附加到编译产物**：调试编译后的输出时，先在终端执行 `node --inspect dist/index.js`，再在 VS Code 中使用「Node.js: Attach」模板连接到默认的调试端口（`9229`）。
+4. **附加到编译产物**：终端执行 `node --inspect dist/index.js`，再使用 VS Code 的「Node.js: Attach」模板连接到 `9229` 端口。
+5. **启用 MCP 可视化扩展**：仓库自带 `extensions/mcp-visualizer` 扩展，可在 VS Code 中打开该文件夹后依次执行：
+   ```bash
+   npm install
+   npm run watch
+   ```
+   按 `F5` 启动扩展调试窗口，即可在侧边栏查看 MCP 文档列表、Git 生命周期流程图，并通过命令「MCP 可视化: 刷新文档索引」即时更新内容。若需发布扩展，运行 `npm run package` 生成 `.vsix`，再通过「Extensions: Install from VSIX…」安装。
+
+## 参考资料
+
+- [`docs/code-guidelines-mcp.md`](./docs/code-guidelines-mcp.md)：代码规范代理的完整使用指南。
+- [`docs/lark-google-auth.md`](./docs/lark-google-auth.md)：飞书与 Google 身份认证相关说明。
+- [`extensions/mcp-visualizer/README.md`](./extensions/mcp-visualizer/README.md)：VS Code 扩展的详细开发、调试与发布流程。
+
+在需要穿越 Google IAP 的环境中，可结合本 README 与 `src/integrations/grafanaMcp.ts` 内的中文注释，了解 ID Token 刷新、重定向处理与会话保持的实现细节。
