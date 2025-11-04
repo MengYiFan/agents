@@ -5,7 +5,8 @@ import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const repoRoot = path.resolve(__dirname, "../..");
+// 由于质量相关代理位于 src/agents/quality，需要向上三级回到仓库根目录以便读取共享提示词与指令。
+const repoRoot = path.resolve(__dirname, "../../..");
 
 const loadInstructionsFile = (relativePath: string): string => {
   const fullPath = path.resolve(repoRoot, relativePath);

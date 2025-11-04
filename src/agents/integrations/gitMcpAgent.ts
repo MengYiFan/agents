@@ -6,6 +6,7 @@ import path from "path";
 
 const execFileAsync = promisify(execFile);
 
+// 封装 Git 操作时常用的可选项，便于在不同动作之间共享预提交审查配置。
 interface PreCommitReviewOptions {
   enabled?: boolean;
   reviewPrompt?: string;
@@ -84,6 +85,7 @@ interface LifecycleStageDefinition {
   notes?: string[];
 }
 
+// 统一执行 git 子命令的入口，自动指定仓库根目录并扩容缓冲区以适配大仓库输出。
 const runGitCommand = async (args: string[]): Promise<{ stdout: string; stderr: string }> => {
   const { stdout, stderr } = await execFileAsync("git", args, {
     cwd: process.cwd(),
@@ -93,6 +95,7 @@ const runGitCommand = async (args: string[]): Promise<{ stdout: string; stderr: 
   return { stdout: stdout.trim(), stderr: stderr.trim() };
 };
 
+// Kai 是内部生成式工具，若存在自定义流程指引则合并到提醒列表里。
 const loadKaiInstructions = async (): Promise<string | undefined> => {
   const kaiPath = path.resolve(process.cwd(), ".kai/instructions.md");
 
@@ -107,6 +110,7 @@ const loadKaiInstructions = async (): Promise<string | undefined> => {
   }
 };
 
+// 在执行预提交审查时，需要采集当前暂存区的 diff 作为输入提示词。
 const collectStagedDiff = async (): Promise<string> => {
   const { stdout } = await runGitCommand(["diff", "--staged"]);
   return stdout;
@@ -124,6 +128,7 @@ const ensureArray = (value: unknown): string[] | undefined => {
   return [String(value)];
 };
 
+// 将指定文件加入暂存区，缺省时默认全部跟踪变更，避免遗漏提交。
 const stageFiles = async (paths?: string[]): Promise<string> => {
   if (!paths || paths.length === 0) {
     const { stdout } = await runGitCommand(["add", "--all"]);
@@ -135,6 +140,7 @@ const stageFiles = async (paths?: string[]): Promise<string> => {
   return stdout;
 };
 
+// 生命周期阶段支持中英文同义词，统一转为内部的枚举值。
 const normalizeLifecycleStage = (value: unknown): LifecycleStageKey | undefined => {
   if (!value) {
     return undefined;

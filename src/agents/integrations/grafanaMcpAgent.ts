@@ -6,7 +6,7 @@ import {
   type GrafanaSearchResult,
   type GrafanaDashboardResponse,
   type GrafanaDatasource,
-} from "../integrations/grafanaMcp.js";
+} from "../../integrations/grafanaMcp.js";
 
 type GrafanaAction = "searchDashboards" | "getDashboard" | "listDatasources" | "getPanel";
 
@@ -59,8 +59,10 @@ type GrafanaOperationResult =
   | GrafanaDatasourceResultPayload
   | GrafanaPanelResultPayload;
 
+// 同一个 baseUrl + service account 组合共用一个客户端，避免重复登录。
 const grafanaClientCache = new Map<string, GrafanaMcpClient>();
 
+// 既支持直接传入 JSON 文本，也支持 base64 编码的服务账号内容。
 const decodeServiceAccountJson = (input: string): { client_email?: string; private_key?: string } => {
   try {
     return JSON.parse(input) as { client_email?: string; private_key?: string };
@@ -77,6 +79,7 @@ const decodeServiceAccountJson = (input: string): { client_email?: string; priva
 const normalizePrivateKey = (key: string): string => key.replace(/\\n/g, "\n");
 
 const resolveGrafanaConfig = (credentials?: GrafanaCredentialsInput): GrafanaMcpConfig => {
+  // 逐层回退到环境变量，保证在工具参数缺省时也能构造完整配置。
   const baseUrl = credentials?.baseUrl ?? process.env.GRAFANA_BASE_URL ?? process.env.GRAFANA_URL;
 
   if (!baseUrl) {
@@ -129,6 +132,7 @@ const resolveGrafanaConfig = (credentials?: GrafanaCredentialsInput): GrafanaMcp
 };
 
 const getGrafanaClient = (credentials?: GrafanaCredentialsInput): GrafanaMcpClient => {
+  // 统一调用 resolveGrafanaConfig，借助缓存复用底层 HTTP 会话。
   const config = resolveGrafanaConfig(credentials);
   const cacheKey = `${config.baseUrl}|${config.googleAuth.clientEmail}`;
   const cached = grafanaClientCache.get(cacheKey);
