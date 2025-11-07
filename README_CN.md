@@ -87,6 +87,7 @@
 
 ## 参考资料
 
+- [`docs/mastra-agents.md`](./docs/mastra-agents.md)：列出仓库内已注册的 Mastra Agent 及其功能定位。
 - [`docs/code-guidelines-mcp.md`](./docs/code-guidelines-mcp.md)：代码规范代理的完整使用指南。
 - [`docs/lark-google-auth.md`](./docs/lark-google-auth.md)：飞书与 Google 身份认证相关说明。
 - [`extensions/mcp-visualizer/README.md`](./extensions/mcp-visualizer/README.md)：VS Code 扩展的详细开发、调试与发布流程。

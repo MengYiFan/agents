@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
-import { LIFECYCLE_STAGES } from '../constants/lifecycleStages';
-import { collectDocs, loadDocContent } from '../services/docService';
-import { checkoutBranch } from '../services/gitService';
-import { McpDocEntry } from '../types';
-import { getWorkspaceRoot } from '../utils/workspace';
+import { LIFECYCLE_STAGES } from '../data/lifecycleStages';
+import { collectDocs, loadDocContent } from '../../../services/docs/documentService';
+import { checkoutBranch } from '../../../services/git/gitOperations';
+import type { McpDocEntry } from '../../../types';
+import { getWorkspaceRoot } from '../../../shared/workspace/workspaceRoot';
 import { getWebviewHtml } from '../webview/htmlFactory';
 
 interface WebviewMessage {
@@ -13,7 +13,7 @@ interface WebviewMessage {
   stageId?: string;
 }
 
-export class McpVisualizerProvider implements vscode.WebviewViewProvider {
+export class VisualizerViewProvider implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView;
 
   constructor(private readonly context: vscode.ExtensionContext) {}
@@ -24,11 +24,15 @@ export class McpVisualizerProvider implements vscode.WebviewViewProvider {
       enableScripts: true,
       localResourceRoots: [
         vscode.Uri.joinPath(this.context.extensionUri, 'dist'),
-        vscode.Uri.joinPath(this.context.extensionUri, 'media'),
+        vscode.Uri.joinPath(this.context.extensionUri, 'assets'),
       ],
     };
 
-    webviewView.webview.html = getWebviewHtml(webviewView.webview, this.context.extensionUri, LIFECYCLE_STAGES);
+    webviewView.webview.html = getWebviewHtml(
+      webviewView.webview,
+      this.context.extensionUri,
+      LIFECYCLE_STAGES,
+    );
     this.bindMessageListener(webviewView);
     await this.sendInitialData();
   }

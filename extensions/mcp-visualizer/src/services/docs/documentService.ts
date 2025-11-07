@@ -1,7 +1,7 @@
 import * as path from 'path';
 import { promises as fs } from 'fs';
 import { marked } from 'marked';
-import { McpDocEntry } from '../types';
+import type { McpDocEntry } from '../../types';
 
 export async function collectDocs(workspaceRoot?: string): Promise<McpDocEntry[]> {
   if (!workspaceRoot) {
@@ -47,7 +47,7 @@ export async function collectDocs(workspaceRoot?: string): Promise<McpDocEntry[]
 export async function loadDocContent(filePath: string): Promise<string> {
   try {
     const markdown = await fs.readFile(filePath, 'utf-8');
-    const html = marked.parse(markdown, { mangle: false, headerIds: false });
+    const html = marked.parse(markdown);
     return html as string;
   } catch (error) {
     return `<p>无法读取文档：${(error as Error).message}</p>`;
