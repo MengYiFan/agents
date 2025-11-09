@@ -1,27 +1,43 @@
-# Mastra Agents Project
+# Mastra Agents Workspace
 
-This repository contains a Mastra project that was generated in an offline environment. It includes a collection of sample agents, a Grafana integration, and a dedicated VS Code extension to speed up day-to-day development.
+This repository contains a Mastra project that was re-created in an offline environment. It demonstrates how to register multiple
+agents, exercise them through a simple runtime script, and expose reusable integrations (Grafana MCP, Git automation, Google/Lark
+SSO helpers) without relying on the official `mastra init` scaffolder.
+
+The workspace mirrors the structure produced by the CLI so you can drop it into an existing toolchain, inspect how the agents are
+wired together, or use it as a starting point for your own automation.
+
+## Prerequisites
+
+- Node.js **18 or later** (Mastra requires the native `fetch` implementation).
+- Access to the npm registry to install dependencies listed in `package.json`.
+- Optional: credentials for Google IAP-protected Grafana instances and Lark OAuth applications if you plan to exercise those
+  integrations.
 
 ## Quick Start
 
-1. **Install dependencies** (requires access to the npm registry):
-   ```bash
-   npm install
-   ```
-2. **Start the Mastra development server**:
-   ```bash
-   npm run dev
-   ```
-3. **Build the TypeScript sources**:
-   ```bash
-   npm run build
-   ```
-4. **Run the compiled output**:
-   ```bash
-   npm start
-   ```
+```bash
+npm install          # Install Mastra, TypeScript, and project dependencies
+npm run dev          # Start the Mastra dev server with hot reloading
+npm run build        # Compile TypeScript sources into dist/
+npm start            # Execute the compiled bundle (runs the sample workflow)
+```
 
-> 💡 The project was scaffolded manually because the environment that created this repository could not run `npx mastra@latest init`. Once dependencies are available the commands above behave the same as an officially generated Mastra workspace.
+> ℹ️ The repository layout was assembled manually because the original environment could not execute `npx mastra@latest init`.
+> Once dependencies are installed the commands above behave exactly like an official Mastra workspace.
+
+### Sample Workflow
+
+The entry point (`src/index.ts`) shows how to invoke agents programmatically:
+
+```ts
+const echoResponse = await mastra.run("echo-agent", { prompt: "Hello Mastra!" });
+const summaryResponse = await mastra.run("summarizer-agent", {
+  prompt: "Mastra helps developers build AI agents with batteries-included tooling.",
+});
+```
+
+Running `npm start` prints both responses so you can validate the runtime wiring before extending the project.
 
 ## Repository Layout
 
@@ -29,66 +45,104 @@ This repository contains a Mastra project that was generated in an offline envir
 .
 ├── docs/                       # Extended documentation for MCP agents and integrations
 ├── extensions/
-│   └── mcp-visualizer/         # VS Code extension that surfaces MCP docs and Git flows
-├── prompts/                    # Markdown prompt files served by the prompt library agent
+│   └── mcp-visualizer/         # VS Code extension for browsing MCP docs and Git lifecycle helpers
+├── prompts/                    # Markdown prompts consumed by the prompt library agent
 ├── src/
 │   ├── agents/
-│   │   ├── examples/           # Basic sample agents (echo, summarizer, prompt library)
-│   │   ├── integrations/       # Git 与 Grafana 相关代理
-│   │   ├── quality/            # Code review & guideline automation agents
+│   │   ├── examples/           # Echo, summarizer, and prompt-library sample agents
+│   │   ├── integrations/       # Git + Grafana focused agents
+│   │   ├── quality/            # Code review and .rules automation agents
 │   │   └── index.ts            # Central agent registry consumed by the runtime
-│   ├── integrations/           # Low-level service clients (Grafana MCP, etc.)
-│   └── index.ts                # Mastra runtime entry point
-├── instructions.md             # Repository-wide review guidance loaded by the code review agent
-└── mastra.config.ts            # Mastra runtime configuration
+│   ├── integrations/           # Low-level service clients (Grafana MCP, Google auth, Lark SSO)
+│   └── index.ts                # Mastra runtime entry point & sample script
+├── instructions.md             # Project-wide review guidance consumed by the code-review agent
+└── mastra.config.ts            # Mastra configuration that lists enabled agents
 ```
 
-The new `src/agents/index.ts` file aggregates all agent instances so that `src/index.ts` only focuses on bootstrapping the Mastra runtime. Related agents are grouped into sub-directories (`examples`, `integrations`, `quality`) to simplify navigation and future maintenance.
+Agents are grouped by responsibility so future additions only require dropping a file into the relevant subdirectory and exporting
+it from `src/agents/index.ts`.
 
-## Agents and Integrations
+## Agent Catalog
 
-- **Prompt Library Agent** (`src/agents/examples/promptLibraryAgent.ts`) exposes the Markdown prompts located under `prompts/`.
-- **Code Review Agent** (`src/agents/quality/codeReviewAgent.ts`) merges `instructions.md` with the default review template at `prompts/codeReviewDefault.md`, ensuring project-specific rules are always applied first.
-- **Code Guidelines MCP Agent** (`src/agents/quality/codeGuidelinesMcp.ts`) inspects `package.json` and generates a `.rules` document tailored to detected frameworks (Nuxt 2, Vue 2, MidwayJS, Egg.js).
-- **Git MCP Agent** (`src/agents/integrations/gitMcpAgent.ts`) wraps common Git operations, lifecycle reminders, and optional pre-commit review prompts.
-- **Grafana MCP Agent** (`src/agents/integrations/grafanaMcpAgent.ts`) calls into `src/integrations/grafanaMcp.ts` to handle Google IAP authentication, cookie management, and Grafana dashboard APIs.
+| Agent | Purpose | Location | Tools |
+| --- | --- | --- | --- |
+| `echo-agent` | Echoes any provided prompt. | `src/agents/examples/echoAgent.ts` | _None_ |
+| `summarizer-agent` | Produces concise bullet summaries. | `src/agents/examples/summarizerAgent.ts` | _None_ |
+| `prompt-library-agent` | Parses Markdown prompt files, extracts metadata comment blocks, and returns structured prompt definitions. | `src/agents/examples/promptLibraryAgent.ts` | `loadPrompt` (reads `prompts/<name>.md`) |
+| `code-review-agent` | Combines `instructions.md` with `prompts/codeReviewDefault.md` to produce Chinese review briefs. | `src/agents/quality/codeReviewAgent.ts` | _None_ |
+| `code-guidelines-mcp` | Generates or updates a `.rules` document tailored to detected frameworks (Nuxt 2, Vue 2, MidwayJS, Egg.js). | `src/agents/quality/codeGuidelinesMcp.ts` | `injectCodeRulesDocument` |
+| `git-mcp-agent` | Wraps Git commands, branch compliance checks, lifecycle guidance, and optional pre-commit reviews. | `src/agents/integrations/gitMcpAgent.ts` | `gitWorkflow`, `lifecycleGuide` |
+| `grafana-mcp-agent` | Accesses Grafana APIs behind Google IAP, handling ID-token minting, cookie refresh, and panel parsing. | `src/agents/integrations/grafanaMcpAgent.ts` | `grafanaMcp` |
 
-Refer to the documents in `docs/` (for example [`docs/code-guidelines-mcp.md`](./docs/code-guidelines-mcp.md)) for deep dives into specific agents and supported commands.
+Refer to the documents in `docs/` for input/output examples, lifecycle definitions, and troubleshooting checklists.
 
-## Development & Debugging Workflow
+## Integrations & Environment Variables
 
-- **Type checking** – Run `npx tsc --noEmit` for a one-off check or `npx tsc --watch` during active development.
-- **Logging** – Add `console.log` statements inside agent handlers. Output appears in the terminal regardless of whether the project is started via `npm run dev` or `npm start`.
-- **Node.js debugging** – After building, start the compiled output with `node --inspect-brk dist/index.js` and attach your preferred debugger (Chrome DevTools, VS Code, etc.).
-- **Runtime sampling** – Execute `node dist/index.js` (or `npm start`) to trigger the sample workflow that exercises the echo and summarizer agents.
+### Grafana MCP (Google IAP)
 
-## Working with VS Code
+`src/integrations/grafanaMcp.ts` authenticates against IAP-protected Grafana instances by exchanging Google service-account
+credentials for ID tokens, caching cookies, and retrying through redirects. Configure credentials via tool inputs or environment
+variables:
 
-1. **Open the workspace** – Use `File → Open Folder…` and select this repository.
-2. **Recommended extensions** – Enable TypeScript/JavaScript tooling plus formatters such as “ESLint” and “Prettier - Code formatter” to surface issues early.
-3. **Launch configuration** – Create a `launch.json` entry to run the Mastra dev server from the VS Code debugger:
-   ```json
-   {
-     "type": "node",
-     "request": "launch",
-     "name": "Mastra Dev Server",
-     "runtimeExecutable": "npm",
-     "runtimeArgs": ["run", "dev"],
-     "console": "integratedTerminal"
-   }
-   ```
-4. **Attach to compiled output** – Start `node --inspect dist/index.js` in the terminal, then use the built-in “Node.js: Attach” configuration to connect to port `9229`.
-5. **Use the MCP Visualizer extension** – The repository bundles a VS Code extension under `extensions/mcp-visualizer`. Open that folder in VS Code and run `npm install` followed by `npm run watch`; press `F5` to launch a development host. The extension provides:
-   - A sidebar view that lists MCP-related README documents for quick reference.
-   - A Git lifecycle diagram that suggests branch strategies and can execute `git checkout` directly from the UI.
-   - Commands such as “MCP 可视化: 刷新文档索引” to rescan documentation without restarting the extension.
+- `GRAFANA_BASE_URL` / `GRAFANA_URL`
+- `GRAFANA_GOOGLE_CLIENT_EMAIL` / `GRAFANA_CLIENT_EMAIL`
+- `GRAFANA_GOOGLE_PRIVATE_KEY` / `GRAFANA_PRIVATE_KEY` (replace `\n` with actual newlines)
+- `GRAFANA_SERVICE_ACCOUNT_JSON` / `GRAFANA_GOOGLE_CREDENTIALS` (optional alternative to individual fields)
+- `GRAFANA_GOOGLE_TARGET_AUDIENCE` / `GRAFANA_IAP_TARGET_AUDIENCE`
 
-Packaging the extension with `npm run package` produces a `.vsix` file that can be installed via “Extensions: Install from VSIX…”.
+The agent also accepts a `serviceAccountJson` string (raw or base64-encoded) in tool calls for ad-hoc overrides.
+
+### Google-Authenticated Fetch Helper
+
+`fetchWithGoogleAuth` (`src/integrations/googleAuthSession.ts`) turns any `fetch` request into an authenticated call by:
+
+1. Requesting or refreshing cookies from a provided `sessionProvider` callback.
+2. Following redirects until the target resource resolves or the Google login endpoint is detected.
+3. Persisting cookies through the provided `TokenStore` implementation.
+
+Use it to compose new MCP clients that rely on Google SSO.
+
+### Lark + Google SSO Bridge
+
+`LarkGoogleAuthManager` (`src/integrations/larkGoogleAuth.ts`) forces Lark OAuth users through enterprise Google SSO, refreshes
+tokens, and exposes helper methods for revocation and authenticated fetches. The `docs/lark-google-auth.md` guide contains a
+complete usage example.
+
+### Git Lifecycle Automation
+
+The Git MCP agent ships with lifecycle-aware defaults (`src/agents/integrations/gitMcpAgent.ts`):
+
+- Branch naming conventions across clarify → release stages.
+- Automatic staging (`git add`) and diff collection when `preCommitReview.enabled` is set.
+- Optional `.kai/instructions.md` ingestion to blend local team policies with review prompts.
+
+See [`docs/git-mcp/README.md`](./docs/git-mcp/README.md) for JSON payload samples and output field descriptions.
+
+## Development Workflow
+
+- **Type checking** – `npx tsc --noEmit`
+- **Incremental compilation** – `npx tsc --watch`
+- **Runtime smoke test** – `npm start`
+- **Debug compiled output** – `node --inspect-brk dist/index.js` and attach a debugger
+- **Logging** – Add `console.log` statements inside agents; output appears in the terminal regardless of entry point.
+
+## VS Code Extension
+
+The bundled `extensions/mcp-visualizer` project surfaces MCP documentation and Git lifecycle diagrams directly in VS Code:
+
+```bash
+cd extensions/mcp-visualizer
+npm install
+npm run watch   # start the extension development host
+```
+
+Press `F5` in VS Code to launch a new window with the sidebar view. Run `npm run package` to emit a distributable `.vsix` when you
+are ready to share the extension.
 
 ## Additional Resources
 
-- [`docs/code-guidelines-mcp.md`](./docs/code-guidelines-mcp.md) – Complete usage guide for the Code Guidelines MCP agent.
-- [`docs/lark-google-auth.md`](./docs/lark-google-auth.md) – Notes on authenticating through Lark + Google.
-- [`extensions/mcp-visualizer/README.md`](./extensions/mcp-visualizer/README.md) – In-depth instructions for the bundled VS Code extension.
-
-For environments protected by Google IAP, see the Grafana section in this README and the inline comments within `src/integrations/grafanaMcp.ts` to understand how tokens, redirects, and session cookies are handled automatically.
+- [`docs/code-guidelines-mcp.md`](./docs/code-guidelines-mcp.md) – `.rules` generation workflow and customization tips.
+- [`docs/git-mcp/README.md`](./docs/git-mcp/README.md) – Full Git MCP command reference.
+- [`docs/lark-google-auth.md`](./docs/lark-google-auth.md) – Lark OAuth + Google SSO helper overview.
+- [`extensions/mcp-visualizer/README.md`](./extensions/mcp-visualizer/README.md) – Development, debugging, and packaging instructions
+  for the VS Code extension.
