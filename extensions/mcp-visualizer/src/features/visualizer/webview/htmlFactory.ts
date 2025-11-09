@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { LifecycleStage } from '../types';
+import type { LifecycleStage } from '../../../types';
 import { renderBranchLanes, renderBranchNodes, renderStageNodes } from './diagram';
 
 function getNonce(): string {
@@ -16,8 +16,8 @@ export function getWebviewHtml(
   extensionUri: vscode.Uri,
   stages: LifecycleStage[],
 ): string {
-  const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'main.css'));
-  const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'main.js'));
+  const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'assets', 'styles', 'main.css'));
+  const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'assets', 'scripts', 'main.js'));
   const nonce = getNonce();
   const csp = `default-src 'none'; style-src ${webview.cspSource}; img-src ${webview.cspSource} https: data:; script-src 'nonce-${nonce}'`;
 

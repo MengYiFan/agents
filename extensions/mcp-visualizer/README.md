@@ -46,13 +46,18 @@
    npm install
    ```
 
-2. **开发调试**
+2. **代码规范检查**
+
+   - 运行 `npm run lint` 执行 ESLint 检查。
+   - 使用 `npm run format` 可一键应用 Prettier 格式化规则。
+
+3. **开发调试**
 
    - 运行 `npm run watch` 持续编译 TypeScript。
    - 按 `F5` 启动扩展开发主机，等待新的 VS Code 窗口打开。
    - 在侧边栏找到 **MCP 可视化** 视图，验证 MCP 列表与 Git 分支视图是否可用。
 
-3. **打包发布**
+4. **打包发布**
 
    - 如未安装 `vsce`，执行 `npm install -g @vscode/vsce` 或 `npm install @vscode/vsce --save-dev`。
    - 构建并打包：
@@ -73,7 +78,7 @@
 3. 点击任何文档条目，即可在右侧阅读 README 内容。支持顶部下拉快速搜索。
 4. 切换到 **Git 分支视图**：
    - 点击阶段卡片（需求、开发、测试、预发、生产等）以查看阶段说明与标准动作。
-   - 在流程图上点击分支节点以切换 Git 分支，或通过右上角的刷新按钮同步最新分支。
+   - 在流程图上点击分支节点以切换 Git 分支，或通过命令面板执行“刷新 MCP 可视化”同步最新分支。
    - 若执行失败，会弹出提示并在图形上标注错误。
 
 ---
@@ -89,25 +94,56 @@
 
 ---
 
+## 代码架构约定
+
+- `src/activation/`：统一注册扩展能力，便于在同一入口管理多个特性。
+- `src/features/`：按功能域划分的实现，每个特性保持命令、Provider 与前端资源内聚。
+- `src/services/`：与 VS Code 无关的业务服务层，可在多特性之间复用。
+- `src/shared/`：命令基类、工作区工具、国际化等跨业务的通用模块。
+
+---
+
 ## 目录结构
 
 ```
 extensions/mcp-visualizer
-├── .vscodeignore        # 打包时排除源代码与开发依赖
-├── media/               # Webview 静态资源（CSS、JS）
-│   ├── main.css
-│   └── main.js
-├── package.json         # 扩展元数据、命令、贡献点与构建脚本
-├── README.md            # 使用说明（本文档）
-├── src
-│   ├── constants/       # 生命周期阶段等常量定义
-│   ├── providers/       # VS Code 视图 Provider 实现
-│   ├── services/        # 文档索引、Git 操作等领域服务
-│   ├── utils/           # 工作区工具方法
-│   ├── webview/         # Webview HTML 生成与图形渲染
-│   └── extension.ts     # 扩展激活入口
-├── tsconfig.json        # TypeScript 配置
-└── dist/                # TypeScript 编译输出（运行时产物）
+├── .github/                   # CI 工作流与 Issue 模板
+│   ├── ISSUE_TEMPLATE/
+│   └── workflows/
+├── .vscode/                   # 调试、推荐扩展与工作区设置
+├── .eslintrc.js               # ESLint 配置
+├── .prettierrc                # Prettier 配置
+├── assets/                    # Webview 静态资源
+│   ├── icons/
+│   ├── scripts/
+│   │   └── main.js
+│   └── styles/
+│       └── main.css
+├── package.json               # 扩展元数据、命令、贡献点与构建脚本
+├── README.md                  # 使用说明（本文档）
+├── src/
+│   ├── activation/            # 集中注册扩展能力
+│   ├── features/
+│   │   └── visualizer/        # MCP 可视化功能聚合
+│   │       ├── commands/      # VS Code 命令定义
+│   │       ├── data/          # 生命周期等静态数据
+│   │       ├── providers/     # Webview Provider 与消息处理
+│   │       └── webview/       # HTML 构建与前端渲染
+│   │           └── templates/ # Webview 模板片段
+│   ├── services/
+│   │   ├── docs/              # 文档索引与 Markdown 解析
+│   │   └── git/               # Git 集成操作
+│   ├── shared/
+│   │   ├── commands/          # 命令基类等通用抽象
+│   │   ├── localization/      # 文案本地化
+│   │   └── workspace/         # 工作区工具函数
+│   ├── types/                 # 插件类型定义
+│   └── extension.ts           # 扩展激活入口
+├── test/
+│   ├── integration/           # 预留的集成测试目录
+│   └── unit/                  # 预留的单元测试目录
+├── tsconfig.json              # TypeScript 配置
+└── dist/                      # TypeScript 编译输出（运行时产物）
 ```
 
 > 提示：`dist/` 目录由 `npm run compile` 自动生成，不建议手动修改。
@@ -122,4 +158,4 @@ extensions/mcp-visualizer
 - 优化 Git 流程图、分支策略或命令行为；
 - 增加国际化支持、主题适配等功能。
 
-在提交之前请确保通过 `npm run compile`，并为新增逻辑编写必要注释，保持代码可维护性。
+在提交之前请确保通过 `npm run compile` 与 `npm run lint`，并为新增逻辑编写必要注释，保持代码可维护性。

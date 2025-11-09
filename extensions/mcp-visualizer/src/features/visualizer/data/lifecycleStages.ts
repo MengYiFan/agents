@@ -1,4 +1,4 @@
-import { LifecycleStage } from '../types';
+import type { LifecycleStage } from '../../../types';
 
 export const LIFECYCLE_STAGES: LifecycleStage[] = [
   {

@@ -132,6 +132,10 @@ npm run watch   # 启动扩展调试主机
 在 VS Code 中按 `F5` 即可启动新的调试窗口。准备分发时，执行 `npm run package` 会生成可安装的 `.vsix` 包。
 
 ## 参考资料
+- [`docs/mastra-agents.md`](./docs/mastra-agents.md)：列出仓库内已注册的 Mastra Agent 及其功能定位。
+- [`docs/code-guidelines-mcp.md`](./docs/code-guidelines-mcp.md)：代码规范代理的完整使用指南。
+- [`docs/lark-google-auth.md`](./docs/lark-google-auth.md)：飞书与 Google 身份认证相关说明。
+- [`extensions/mcp-visualizer/README.md`](./extensions/mcp-visualizer/README.md)：VS Code 扩展的详细开发、调试与发布流程。
 
 - [`docs/code-guidelines-mcp.md`](./docs/code-guidelines-mcp.md)：`.rules` 文档生成流程与自定义技巧。
 - [`docs/git-mcp/README.md`](./docs/git-mcp/README.md)：Git MCP 命令参考与最佳实践。

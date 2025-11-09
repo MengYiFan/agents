@@ -1,4 +1,4 @@
-import { LifecycleStage } from '../types';
+import type { LifecycleStage } from '../../../types';
 
 const BRANCH_LANES = [
   { name: 'feature/*', y: 200 },
