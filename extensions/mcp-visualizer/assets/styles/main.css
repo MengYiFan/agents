@@ -1,14 +1,76 @@
+:root {
+  color-scheme: var(--vscode-color-scheme, light dark);
+}
+
+html,
+body {
+  height: 100%;
+}
+
 body {
   font-family: var(--vscode-font-family);
   color: var(--vscode-foreground);
   padding: 0;
   margin: 0;
+  background: var(--vscode-editor-background);
+  display: flex;
+  flex-direction: column;
+}
+
+.view-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--vscode-editorWidget-border);
+  gap: 16px;
+}
+
+.view-title h1 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+.view-title p {
+  margin: 0;
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+}
+
+.auth-badges {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.auth-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--vscode-editorWidget-border);
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.5;
+  transition: opacity 0.2s ease, border-color 0.2s ease;
+}
+
+.auth-badge.active {
+  border-color: var(--vscode-textLink-foreground);
+  color: var(--vscode-foreground);
+  opacity: 1;
+}
+
+.auth-badge img {
+  width: 16px;
+  height: 16px;
 }
 
 .tab-container {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
 .tab-header {
@@ -18,7 +80,7 @@ body {
 
 .tab-header button {
   flex: 1;
-  padding: 8px 12px;
+  padding: 10px 12px;
   background: transparent;
   border: none;
   color: inherit;
@@ -35,30 +97,64 @@ body {
   flex: 1;
   display: none;
   overflow: auto;
-  padding: 12px 16px;
+  padding: 16px 20px;
+  background: var(--vscode-editor-background);
 }
 
 .tab-content.active {
   display: block;
 }
 
-.mcp-list {
+.panel {
+  background: var(--vscode-sideBar-background);
+  border: 1px solid var(--vscode-editorWidget-border);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.panel-header {
+  margin-bottom: 12px;
+}
+
+.panel-header h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+.panel-header p {
+  margin: 0;
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+}
+
+.mcp-panel {
   display: flex;
   gap: 16px;
 }
 
-.mcp-list nav {
+.mcp-nav {
   min-width: 220px;
   border-right: 1px solid var(--vscode-editorWidget-border);
   padding-right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .mcp-item {
-  display: block;
   padding: 6px 8px;
-  border-radius: 4px;
-  margin-bottom: 4px;
+  border-radius: 6px;
+  border: none;
+  text-align: left;
+  background: transparent;
+  color: inherit;
   cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.mcp-item:hover {
+  background: var(--vscode-editor-hoverHighlightBackground, rgba(255, 255, 255, 0.08));
 }
 
 .mcp-item.active {
@@ -66,22 +162,189 @@ body {
   color: var(--vscode-editor-selectionForeground);
 }
 
-.mcp-content {
+.mcp-preview {
   flex: 1;
-  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
-.mcp-content h1 {
-  font-size: 20px;
+.preview-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.language-switcher {
+  display: flex;
+  gap: 6px;
+}
+
+.language-button {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--vscode-editorWidget-border);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.language-button.active {
+  background: var(--vscode-textLink-foreground);
+  color: var(--vscode-editor-selectionForeground);
+  border-color: var(--vscode-textLink-foreground);
+}
+
+.language-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.mcp-content {
+  flex: 1;
+  overflow: auto;
+  background: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-editorWidget-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.instruction-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.instruction-item {
+  border: 1px solid var(--vscode-editorWidget-border);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--vscode-editor-background);
+}
+
+.instruction-item h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.instruction-item p {
+  margin: 0;
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+  flex: 1;
+}
+
+.instruction-action {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--vscode-textLink-foreground);
+  background: transparent;
+  color: var(--vscode-textLink-foreground);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.instruction-action:hover {
+  background: var(--vscode-textLink-foreground);
+  color: var(--vscode-editor-selectionForeground);
+}
+
+.workflow-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.workflow-step {
+  border: 1px solid var(--vscode-editorWidget-border);
+  border-radius: 10px;
+  padding: 16px;
+  background: var(--vscode-sideBar-background);
+}
+
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.step-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--vscode-textLink-foreground);
+  color: var(--vscode-editor-selectionForeground);
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.step-header h3 {
+  margin: 0;
+  font-size: 15px;
+  flex: 1;
+}
+
+.step-optional {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  border: 1px solid var(--vscode-descriptionForeground);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.step-description {
+  margin: 0 0 12px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+}
+
+.workflow-input input {
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid var(--vscode-editorWidget-border);
+  background: var(--vscode-editor-background);
+  color: inherit;
+  padding: 6px 8px;
+}
+
+.workflow-notes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.workflow-notes textarea {
+  min-height: 120px;
+  resize: vertical;
+  border-radius: 6px;
+  border: 1px solid var(--vscode-editorWidget-border);
+  background: var(--vscode-editor-background);
+  color: inherit;
+  padding: 8px;
+  font-family: inherit;
 }
 
 .diagram-container {
   display: flex;
   gap: 24px;
+  flex-wrap: wrap;
 }
 
 .diagram {
-  flex: 2;
+  flex: 1 1 520px;
+  min-width: 320px;
 }
 
 .diagram svg {
@@ -90,9 +353,10 @@ body {
 }
 
 .stage-info {
-  flex: 1;
+  flex: 1 1 260px;
   border-left: 1px solid var(--vscode-editorWidget-border);
   padding-left: 16px;
+  min-width: 220px;
 }
 
 .stage-info h3 {
