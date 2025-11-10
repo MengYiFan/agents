@@ -2,19 +2,32 @@ import * as vscode from 'vscode';
 import { LIFECYCLE_STAGES } from '../data/lifecycleStages';
 import { collectDocs, loadDocContent } from '../../../services/docs/documentService';
 import { checkoutBranch } from '../../../services/git/gitOperations';
-import type { McpDocEntry } from '../../../types';
+import type { McpDocEntry, SupportedLanguage } from '../../../types';
 import { getWorkspaceRoot } from '../../../shared/workspace/workspaceRoot';
 import { getWebviewHtml } from '../webview/htmlFactory';
+import { INSTRUCTION_ITEMS } from '../data/instructionCatalog';
+import { WORKFLOW_STEPS } from '../data/workflowSteps';
+import { executeInstructionAction } from '../../../services/instructions/instructionService';
+import { getAuthorizationStatuses } from '../../../services/auth/authorizationStatusService';
 
 interface WebviewMessage {
-  type: 'requestDocs' | 'openDoc' | 'checkoutBranch' | 'switchStage';
-  id?: string;
+  type:
+    | 'requestInitialData'
+    | 'openDoc'
+    | 'checkoutBranch'
+    | 'switchStage'
+    | 'executeInstruction';
+  docId?: string;
+  language?: SupportedLanguage;
   branch?: string;
   stageId?: string;
+  instructionId?: string;
 }
 
 export class VisualizerViewProvider implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView;
+
+  private docs: McpDocEntry[] = [];
 
   constructor(private readonly context: vscode.ExtensionContext) {}
 
@@ -47,13 +60,12 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
   private bindMessageListener(webviewView: vscode.WebviewView) {
     webviewView.webview.onDidReceiveMessage(async (message: WebviewMessage) => {
       switch (message.type) {
-        case 'requestDocs':
+        case 'requestInitialData':
           await this.sendInitialData();
           break;
         case 'openDoc':
-          if (message.id) {
-            const html = await loadDocContent(message.id);
-            this.postMessage({ type: 'docContent', id: message.id, html });
+          if (message.docId) {
+            await this.openDoc(message.docId, message.language);
           }
           break;
         case 'checkoutBranch':
@@ -69,6 +81,11 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
             }
           }
           break;
+        case 'executeInstruction':
+          if (message.instructionId) {
+            await this.executeInstruction(message.instructionId);
+          }
+          break;
         default:
           break;
       }
@@ -77,15 +94,92 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
 
   private async sendInitialData() {
     const workspaceRoot = getWorkspaceRoot();
-    const docs = await collectDocs(workspaceRoot);
-    const firstDoc: McpDocEntry | undefined = docs[0];
-    const initialContent = firstDoc ? await loadDocContent(firstDoc.filePath) : '';
+    this.docs = await collectDocs(workspaceRoot);
+    const firstDoc: McpDocEntry | undefined = this.docs[0];
+    const initialVariant = firstDoc
+      ? this.selectVariant(firstDoc, firstDoc.defaultLanguage)
+      : undefined;
+    const initialContent = initialVariant ? await loadDocContent(initialVariant.filePath) : '';
 
-    this.postMessage({ type: 'docs', docs, initialDocId: firstDoc?.id, initialContent });
-    this.postMessage({ type: 'lifecycle', stages: LIFECYCLE_STAGES });
+    const webview = this.view?.webview;
+
+    this.postMessage({
+      type: 'initialData',
+      docs: this.docs.map((doc) => ({
+        id: doc.id,
+        title: doc.title,
+        description: doc.description,
+        defaultLanguage: doc.defaultLanguage,
+        languages: doc.variants.map((variant) => ({
+          language: variant.language,
+          label: variant.label,
+        })),
+      })),
+      initialDocId: firstDoc?.id,
+      initialLanguage: initialVariant?.language ?? firstDoc?.defaultLanguage,
+      initialContent,
+      instructions: INSTRUCTION_ITEMS.map((item) => ({
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        actionLabel: item.actionLabel,
+        requiresConfirmation: item.requiresConfirmation ?? false,
+        confirmMessage: item.confirmMessage,
+      })),
+      workflow: WORKFLOW_STEPS,
+      authorizations: webview
+        ? getAuthorizationStatuses(webview, this.context.extensionUri)
+        : [],
+    });
   }
 
   private postMessage(message: unknown) {
     this.view?.webview.postMessage(message);
+  }
+
+  private selectVariant(doc: McpDocEntry, language?: SupportedLanguage) {
+    if (language) {
+      const variant = doc.variants.find((item) => item.language === language);
+      if (variant) {
+        return variant;
+      }
+    }
+    return doc.variants[0];
+  }
+
+  private async openDoc(docId: string, language?: SupportedLanguage) {
+    const entry = this.docs.find((doc) => doc.id === docId);
+    if (!entry) {
+      return;
+    }
+
+    const variant = this.selectVariant(entry, language ?? entry.defaultLanguage);
+    if (!variant) {
+      return;
+    }
+
+    const html = await loadDocContent(variant.filePath);
+    this.postMessage({ type: 'docContent', id: docId, language: variant.language, html });
+  }
+
+  private async executeInstruction(instructionId: string) {
+    const instruction = INSTRUCTION_ITEMS.find((item) => item.id === instructionId);
+    if (!instruction) {
+      return;
+    }
+
+    if (instruction.requiresConfirmation) {
+      const confirmation = await vscode.window.showWarningMessage(
+        instruction.confirmMessage ?? '确定执行该指令？',
+        { modal: true },
+        '继续',
+        '取消',
+      );
+      if (confirmation !== '继续') {
+        return;
+      }
+    }
+
+    await executeInstructionAction(this.context, instruction.actionId);
   }
 }

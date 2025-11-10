@@ -31,35 +31,63 @@ export function getWebviewHtml(
     <link rel="stylesheet" href="${styleUri}">
   </head>
   <body>
+    <header class="view-header">
+      <div class="view-title">
+        <h1>MCP 可视化助手</h1>
+        <p>串联需求、规范与分支，让协作一目了然。</p>
+      </div>
+      <div class="auth-badges" id="authBadges"></div>
+    </header>
     <div class="tab-container">
       <div class="tab-header">
-        <button class="tab-button active" data-target="mcpTab">MCP 列表</button>
-        <button class="tab-button" data-target="gitTab">Git 分支视图</button>
+        <button class="tab-button active" data-target="listTab">列表集</button>
+        <button class="tab-button" data-target="workflowTab">开发流程</button>
       </div>
-      <div id="mcpTab" class="tab-content active">
-        <div class="mcp-list">
-          <nav id="mcpNav"></nav>
-          <section class="mcp-content" id="mcpContent">请选择一个 MCP 查看说明。</section>
-        </div>
-      </div>
-      <div id="gitTab" class="tab-content">
-        <div class="diagram-container">
-          <div class="diagram">
-            <svg viewBox="0 0 1200 600">
-              <g id="stageNodes">
-                ${renderStageNodes(stages)}
-              </g>
-              ${renderBranchLanes()}
-              ${renderBranchNodes()}
-            </svg>
+      <div id="listTab" class="tab-content active">
+        <section class="panel">
+          <header class="panel-header">
+            <h2>MCP 列表</h2>
+            <p>集中展示当前项目的 MCP 文档</p>
+          </header>
+          <div class="mcp-panel">
+            <nav id="mcpNav" class="mcp-nav"></nav>
+            <section class="mcp-preview">
+              <div class="preview-header">
+                <div class="language-switcher" id="languageSwitcher"></div>
+              </div>
+              <article class="mcp-content" id="mcpContent">请选择一个 MCP 查看说明。</article>
+            </section>
           </div>
-          <aside class="stage-info">
-            <h3 id="stageTitle">选择一个阶段</h3>
-            <p id="stageDesc">点击上方阶段获取生命周期指导。</p>
-            <h4>推荐分支</h4>
-            <ul id="stageBranches"></ul>
-          </aside>
-        </div>
+        </section>
+        <section class="panel">
+          <header class="panel-header">
+            <h2>指令列表</h2>
+            <p>常用自动化动作</p>
+          </header>
+          <div class="instruction-list" id="instructionList"></div>
+        </section>
+      </div>
+      <div id="workflowTab" class="tab-content">
+        <ol class="workflow-steps" id="workflowSteps"></ol>
+        <template id="gitWorkflowDiagram">
+          <div class="diagram-container">
+            <div class="diagram">
+              <svg viewBox="0 0 1200 600">
+                <g id="stageNodes">
+                  ${renderStageNodes(stages)}
+                </g>
+                ${renderBranchLanes()}
+                ${renderBranchNodes()}
+              </svg>
+            </div>
+            <aside class="stage-info">
+              <h3 id="stageTitle">选择一个阶段</h3>
+              <p id="stageDesc">点击上方阶段获取生命周期指导。</p>
+              <h4>推荐分支</h4>
+              <ul id="stageBranches"></ul>
+            </aside>
+          </div>
+        </template>
       </div>
     </div>
     <script nonce="${nonce}" src="${scriptUri}"></script>
