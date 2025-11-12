@@ -41,13 +41,49 @@ Git MCP Agent 在 `src/agents/gitMcpAgent.ts` 中定义，并在 `src/index.ts` 
 | --- | --- | --- | --- |
 | `clarify` | 需求澄清 | `master`、`feature/<需求号>-<简述>` | 从最新 master 派生需求分支，命名需包含需求编号。 |
 | `development` | 开发 | `feature/<需求号>-<简述>` | 在 feature 分支持续开发，自测通过后及时提交推送。 |
-| `testing` | 提测 | `feature/<需求号>-<简述>`、`release/<版本号>` | 创建提测分支并与测试环境同步。 |
-| `experience` | 体验 | `release/<版本号>` | 面向体验环境的验证，避免直接在 release 分支开发。 |
-| `acceptance` | 验收 | `release/<版本号>`、`hotfix/<缺陷号>` | 合并验收反馈，确保回溯记录完整。 |
-| `release` | 发布 | `master`、`release/<版本号>` | 合并回 master 并打 tag。 |
-| `operation` | 运营 | `master`、`hotfix/<缺陷号>` | 关注线上反馈及紧急修复流程。 |
+| `testing` | 提测 | `feature/<需求号>-<简述>`、`release/<版本号>`、`uat`/`stage` | 创建提测分支、打环境标签并同步测试环境。 |
+| `experience` | 体验 | `release/<版本号>`、`stage 标签` | 结合标签在 stage 环境体验并收集反馈。 |
+| `acceptance` | 验收 | `release/<版本号>`、`master`、`pre-production` | 通过 MR 回合 master 并完成预生产回归。 |
+| `release` | 发布 | `master`、`production`、`production 标签` | 合并到生产并创建正式标签。 |
+| `operation` | 运营 | `master`、`bugfix/<编号>`、`hotfix/<编号>` | 区分普通缺陷与紧急 hotfix，并确保回灌主干。 |
+
+### Git Flow 分支规范补充
+
+根据团队最新的 Git Flow SOP，`gitMcpAgent` 在生命周期指引中已经同步了以下约束，可通过 `lifecycleGuide` 直接获取：
+
+- **需求开发**：所有功能开发必须从 `master` 切出 `feature/XXX-1234-xxx`，在 feature 分支内自测并持续提交、推送。
+- **提测阶段**：从 feature 分支创建环境标签前，需先从 `master` 派生 `release/<版本号>`，通过 Merge Request 将 feature 合入 release，并按 `{环境}-{release版本}-{发布号}`（如 `stage-2025.w33.02-01`）创建/推送标签后同步 `uat`、`stage` 分支。可通过 `export RELEASE_VERSION=...`、`export DEPLOY_SEQ=...`、`export ENVIRONMENT_TAG=stage` 等方式统一替换占位符。
+- **上线准备**：验收完成后必须经由 Merge Request 将 `release/<版本号>` 合入 `master`，再合并到 `pre-production` 做回归。任何修复仍需在 release 分支完成并重复提测/验收流程。
+- **上线阶段**：手动从 `master` 合并至 `production`，通过 `export RELEASE_VERSION=...` 与 `export DEPLOY_SEQ=...` 等变量创建 `production-${RELEASE_VERSION}-${DEPLOY_SEQ}` 正式标签，并执行上线。
+- **产线缺陷**：普通缺陷从 `master` 开 `bugfix` 分支重走流程；紧急问题优先回滚生产标签，再从 `production` 创建 `hotfix`，修复完成后回灌 `release` 与 `master`。
+
+为便于实际操作，可搭配 `gitWorkflow` 的快捷调用触发常用指令：
+
+| 场景 | 快捷指令示例 |
+| --- | --- |
+| 创建需求分支 | `{"action":"createBranch","options":{"branch":"feature/XXX-1234-xxx","source":"master","lifecycleStage":"clarify"}}` |
+| 准备提测 release | `{"action":"createBranch","options":{"branch":"release/2025.w33.02","source":"master","lifecycleStage":"testing"}}` |
+| 查看提测阶段提醒 | `{"action":"lifecycleGuide","options":{"stage":"testing"}}` |
+| 推进验收合并 | `{"action":"lifecycleGuide","options":{"stage":"acceptance"}}` |
+| 处理紧急线上缺陷 | `{"action":"lifecycleGuide","options":{"stage":"operation"}}` |
+
+执行以上调用将返回阶段化步骤、提醒以及下一步推荐命令，帮助团队成员快速遵循 SOP。
 
 调用 `gitWorkflow` 时传入 `options.lifecycleStage` 或直接使用 `lifecycleGuide` 工具，都可以获得上述阶段的标准步骤、提醒及推荐命令。
+
+### 占位符与变量替换说明
+
+生命周期指引中的命令存在 `release/<版本号>`、`production-${RELEASE_VERSION}-${DEPLOY_SEQ}` 等占位符。执行前请根据本次版本信息显式赋值，例如：
+
+```bash
+export RELEASE_VERSION=2025.w33.02
+export DEPLOY_SEQ=01
+export ENVIRONMENT_TAG=stage
+git tag ${ENVIRONMENT_TAG}-${RELEASE_VERSION}-${DEPLOY_SEQ}
+git push origin ${ENVIRONMENT_TAG}-${RELEASE_VERSION}-${DEPLOY_SEQ}
+```
+
+如在新的终端或 CI 任务中执行，需要重新设置上述变量，避免出现空值导致标签命名失败。
 
 ### 3. 预提交代码审查（Pre-commit Review）
 

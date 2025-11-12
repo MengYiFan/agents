@@ -231,11 +231,11 @@ const lifecycleGuidance: Record<LifecycleStageKey, LifecycleStageDefinition> = {
     key: "testing",
     name: "提测",
     summary:
-      "将完成开发的 feature 分支合入发布分支，并同步至 UAT 环境分支等待测试确认。",
-    branchFocus: ["feature/<需求号>-<简述>", "release/<版本号>", "uat"],
+      "将完成开发的 feature 分支合入发布分支，并根据测试环境创建标签同步至 UAT/Stage，等待测试确认。",
+    branchFocus: ["feature/<需求号>-<简述>", "release/<版本号>", "uat", "stage"],
     steps: [
       {
-        title: "准备发布分支",
+        title: "从 master 创建发布分支",
         commands: [
           "git checkout master",
           "git pull origin master",
@@ -244,19 +244,45 @@ const lifecycleGuidance: Record<LifecycleStageKey, LifecycleStageDefinition> = {
         notes: "release 分支应从当前 master 派生，可复用已有版本分支。",
       },
       {
-        title: "合并需求分支进入 release",
-        commands: ["git merge --no-ff feature/<需求号>-<简述>", "git push origin release/<版本号>"],
-        notes: "保持 --no-ff 便于追踪合并记录。",
+        title: "通过 MR 合并 feature 分支",
+        commands: [
+          "git merge --no-ff feature/<需求号>-<简述>",
+          "git push origin release/<版本号>",
+        ],
+        notes: "合并需走 Code Review/MR 流程，保持 --no-ff 便于追踪。",
       },
       {
-        title: "同步 UAT 环境分支",
-        commands: ["git checkout uat", "git pull origin uat", "git merge release/<版本号>", "git push origin uat"],
-        notes: "UAT 分支更新后请通知测试同学开始验证。",
+        title: "为测试环境创建标签",
+        commands: [
+          "git checkout release/<版本号>",
+          "git pull origin release/<版本号>",
+          "export RELEASE_VERSION=<release版本，例如2025.w33.02>",
+          "export DEPLOY_SEQ=<发布号，例如01>",
+          "export ENVIRONMENT_TAG=<环境标识，例如stage>",
+          "git tag ${ENVIRONMENT_TAG:-stage}-${RELEASE_VERSION}-${DEPLOY_SEQ}",
+          "git push origin ${ENVIRONMENT_TAG:-stage}-${RELEASE_VERSION}-${DEPLOY_SEQ}",
+        ],
+        notes:
+          "先设置 RELEASE_VERSION/DEPLOY_SEQ/ENVIRONMENT_TAG，再执行打标。例如 stage-2025.w33.02-01，可按 stage/uat 区分。",
+      },
+      {
+        title: "同步 UAT/Stage 环境分支",
+        commands: [
+          "git checkout uat",
+          "git pull origin uat",
+          "git merge release/<版本号>",
+          "git push origin uat",
+          "git checkout stage",
+          "git pull origin stage",
+          "git merge release/<版本号>",
+          "git push origin stage",
+        ],
+        notes: "若通过标签自动部署，请确保标签与环境同步触发。",
       },
     ],
     reminders: [
-      "确保 release 分支包含完整的提测说明与回滚方案。",
-      "提测期间不要在 release 分支上直接开发新功能。",
+      "确保 release 分支包含完整的提测说明、回滚方案及对应标签记录。",
+      "提测阶段产生的缺陷需回到原 feature/* 分支修复，再次合入 release。",
     ],
     recommendedCommands: ["merge", "push", "status", "lifecycleGuide"],
     nextStage: "体验",
@@ -264,17 +290,33 @@ const lifecycleGuidance: Record<LifecycleStageKey, LifecycleStageDefinition> = {
   experience: {
     key: "experience",
     name: "体验",
-    summary: "将已通过 UAT 的代码同步至 stage 环境，准备业务体验或灰度。",
-    branchFocus: ["uat", "stage"],
+    summary:
+      "使用 release 分支及对应标签验证 stage 环境，沉淀体验反馈并准备验收材料。",
+    branchFocus: ["release/<版本号>", "stage", "stage 标签"],
     steps: [
       {
-        title: "同步 stage 环境分支",
-        commands: ["git checkout stage", "git pull origin stage", "git merge uat", "git push origin stage"],
-        notes: "确保 stage 的配置或数据准备就绪，并记录体验反馈。",
+        title: "确认 stage 标签部署成功",
+        commands: [
+          "git checkout release/<版本号>",
+          "git describe --tags --abbrev=0",
+          "export STAGE_TAG=${STAGE_TAG:-stage-${RELEASE_VERSION}-${DEPLOY_SEQ}}",
+          "git push origin ${STAGE_TAG}",
+        ],
+        notes:
+          "确保 stage 标签（如 stage-2025.w33.02-01）已部署，可通过 STAGE_TAG 或前述环境变量复用命名。",
+      },
+      {
+        title: "跟进体验反馈",
+        commands: [
+          "git checkout feature/<需求号>-<简述>",
+          "git cherry-pick <修复提交>",
+          "git push origin feature/<需求号>-<简述>",
+        ],
+        notes: "体验阶段的修复仍在 feature 分支完成，再通过 MR 合入 release。",
       },
     ],
     reminders: [
-      "体验过程中若有问题需回滚，请在 release 分支修复并重新同步。",
+      "体验过程中如需回滚，先回退 stage 标签，再在 release 分支修复。",
     ],
     recommendedCommands: ["merge", "push", "status", "lifecycleGuide"],
     nextStage: "验收",
@@ -282,17 +324,33 @@ const lifecycleGuidance: Record<LifecycleStageKey, LifecycleStageDefinition> = {
   acceptance: {
     key: "acceptance",
     name: "验收",
-    summary: "将 stage 分支结果合入 master，为最终上线做准备。",
-    branchFocus: ["stage", "master"],
+    summary:
+      "通过 MR 将 release 分支合入 master，并在 pre-production 环境完成回归验证。",
+    branchFocus: ["release/<版本号>", "master", "pre-production"],
     steps: [
       {
-        title: "合并 stage 至 master",
-        commands: ["git checkout master", "git pull origin master", "git merge stage", "git push origin master"],
-        notes: "验收完成后 master 应保持与 stage 一致。",
+        title: "完成 release → master 合并",
+        commands: [
+          "git checkout master",
+          "git pull origin master",
+          "git merge --no-ff release/<版本号>",
+          "git push origin master",
+        ],
+        notes: "必须走 Merge Request 与 Code Review，确保 master 记录完整。",
+      },
+      {
+        title: "同步 pre-production 环境",
+        commands: [
+          "git checkout pre-production",
+          "git pull origin pre-production",
+          "git merge master",
+          "git push origin pre-production",
+        ],
+        notes: "在预生产环境执行完整回归，记录阻塞项。",
       },
     ],
     reminders: [
-      "验收通过后记得更新发布说明，并准备上线 checklist。",
+      "验收通过后更新发布说明，并准备上线 checklist 与回滚预案。",
     ],
     recommendedCommands: ["merge", "push", "status", "lifecycleGuide"],
     nextStage: "发布",
@@ -300,27 +358,35 @@ const lifecycleGuidance: Record<LifecycleStageKey, LifecycleStageDefinition> = {
   release: {
     key: "release",
     name: "发布",
-    summary: "将 master 的最终代码部署至 production，并创建对应标签。",
-    branchFocus: ["master", "production"],
+    summary: "将已验收的 master 代码同步至 production，创建正式发布标签并执行上线。",
+    branchFocus: ["master", "production", "生产标签"],
     steps: [
       {
-        title: "同步生产分支并上线",
+        title: "合并 master 至 production",
         commands: [
           "git checkout production",
           "git pull origin production",
           "git merge master",
           "git push origin production",
         ],
-        notes: "上线完成后建议打 tag 记录版本。",
+        notes: "生产部署前再次确认预生产验证结果与回滚方案。",
       },
       {
-        title: "创建并推送版本标签",
-        commands: ["git tag v<版本号>", "git push origin v<版本号>"],
-        notes: "标签命名需与发布版本一致，便于追踪。",
+        title: "创建并推送生产标签",
+        commands: [
+          "git checkout master",
+          "git pull origin master",
+          "export RELEASE_VERSION=<release版本，例如2025.w33.02>",
+          "export DEPLOY_SEQ=<发布号，例如01>",
+          "git tag production-${RELEASE_VERSION}-${DEPLOY_SEQ}",
+          "git push origin production-${RELEASE_VERSION}-${DEPLOY_SEQ}",
+        ],
+        notes:
+          "通过 export 指定版本与发布号后再执行打标，例如 production-2025.w33.02-01，并在上线操作后记录产线时间点。",
       },
     ],
     reminders: [
-      "发布完成后需通知相关方，并监控生产指标。",
+      "发布完成后需在 master、production 上标记版本，并通知相关方与监控生产指标。",
     ],
     recommendedCommands: ["merge", "push", "status", "lifecycleGuide"],
     nextStage: "运营",
@@ -328,31 +394,38 @@ const lifecycleGuidance: Record<LifecycleStageKey, LifecycleStageDefinition> = {
   operation: {
     key: "operation",
     name: "运营",
-    summary: "发布后如需紧急修复，可基于 production-hotfix 分支管理补丁。",
-    branchFocus: ["production", "production-hotfix", "hotfix/<问题号>", "release/<版本号>"],
+    summary:
+      "面对产线问题，优先评估是否回滚标签，再选择 bugfix 或 hotfix 分支修复并回灌主干。",
+    branchFocus: ["master", "production", "bugfix/<编号>", "hotfix/<编号>", "release/<版本号>"],
     steps: [
       {
-        title: "准备 hotfix 分支",
+        title: "处理普通线上缺陷",
+        commands: [
+          "git checkout master",
+          "git pull origin master",
+          "git checkout -b bugfix/<编号>",
+          "git add <files>",
+          "git commit -m 'fix: <描述>'",
+          "git push origin bugfix/<编号>",
+        ],
+        notes: "普通缺陷从 master 开分支，复用完整提测/发布流程回灌 release 与 master。",
+      },
+      {
+        title: "处理紧急产线缺陷",
         commands: [
           "git checkout production",
           "git pull origin production",
-          "git checkout -B production-hotfix production",
-        ],
-        notes: "hotfix 分支仅用于紧急修复，修复后需回灌 master。",
-      },
-      {
-        title: "创建并处理 hotfix",
-        commands: [
-          "git checkout -b hotfix/<问题号>",
+          "git tag -f rollback-<版本号> <上个稳定版本>",
+          "git checkout -b hotfix/<编号>",
           "git add <files>",
           "git commit -m 'fix: <描述>'",
-          "git push origin hotfix/<问题号>",
+          "git push origin hotfix/<编号>",
         ],
-        notes: "hotfix 提交需同步到 release/master，避免版本漂移。",
+        notes: "先回滚生产标签，再基于 production 创建 hotfix，修复完成后回灌 master/release。",
       },
     ],
     reminders: [
-      "完成修复后记得合并回 master、release 及 production 分支。",
+      "无论 bugfix 还是 hotfix，修复完成后需合并回 master、release/<版本号> 及 production。",
     ],
     recommendedCommands: ["merge", "push", "status", "lifecycleGuide"],
     notes: ["运营阶段可根据需要创建新的需求分支进入下一轮迭代。"],

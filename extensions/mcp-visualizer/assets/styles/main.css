@@ -362,6 +362,115 @@ body {
 .stage-info h3 {
   margin-top: 0;
 }
+.stage-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0;
+}
+.stage-actions-empty {
+  margin: 0;
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground);
+}
+.stage-action-button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  border: 1px solid var(--vscode-editorWidget-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+  text-align: left;
+}
+.stage-action-button:hover {
+  border-color: var(--vscode-textLink-foreground);
+  background: var(--vscode-editor-hoverHighlightBackground, rgba(255, 255, 255, 0.04));
+}
+.stage-action-header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.stage-action-title {
+  font-weight: 600;
+  font-size: 13px;
+}
+.stage-action-badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--vscode-textLink-foreground);
+  color: var(--vscode-textLink-foreground);
+}
+.stage-action-desc {
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground);
+}
+.stage-action-button.status-success {
+  border-color: var(--vscode-testing-iconPassed, #73c991);
+}
+.stage-action-button.status-error {
+  border-color: var(--vscode-testing-iconFailed, #f14c4c);
+}
+.stage-action-button.status-cancelled {
+  border-color: var(--vscode-editorWidget-border);
+  opacity: 0.9;
+}
+.stage-action-status {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--vscode-editorWidget-border);
+  border-radius: 8px;
+  background: var(--vscode-editor-background);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+}
+.stage-action-status.hidden {
+  display: none;
+}
+.stage-action-status-badge {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--vscode-descriptionForeground);
+  color: var(--vscode-descriptionForeground);
+}
+.stage-action-status-badge.status-success {
+  border-color: var(--vscode-testing-iconPassed, #73c991);
+  color: var(--vscode-testing-iconPassed, #73c991);
+}
+.stage-action-status-badge.status-error {
+  border-color: var(--vscode-testing-iconFailed, #f14c4c);
+  color: var(--vscode-testing-iconFailed, #f14c4c);
+}
+.stage-action-status-summary {
+  margin: 0;
+  font-size: 12px;
+  color: var(--vscode-foreground);
+  white-space: pre-line;
+}
+.stage-action-status-meta,
+.stage-action-status-subtitle {
+  margin: 0;
+  color: var(--vscode-descriptionForeground);
+}
+.stage-action-status-commands {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--vscode-descriptionForeground);
+}
+.hidden {
+  display: none !important;
+}
 
 .branch-node,
 .stage-node {

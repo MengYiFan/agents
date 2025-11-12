@@ -9,12 +9,17 @@
   const languageSwitcher = document.getElementById('languageSwitcher');
   const instructionList = document.getElementById('instructionList');
   const workflowSteps = document.getElementById('workflowSteps');
+  const stageActionsContainer = document.getElementById('stageActions');
+  const stageActionStatus = document.getElementById('stageActionStatus');
   const authBadges = document.getElementById('authBadges');
 
   let docs = [];
   let currentDocId = persistedState.selectedDocId || null;
   let currentLanguage = persistedState.selectedLanguage || null;
+  let currentStageId = persistedState.currentStageId || null;
   const workflowState = persistedState.workflowValues || {};
+  const stageActionState = persistedState.stageActionState || {};
+  const stageInfoCache = persistedState.stageInfoCache || {};
 
   function updateState(patch) {
     persistedState = { ...persistedState, ...patch };
@@ -238,6 +243,16 @@
     if (!stage) {
       return;
     }
+    stageInfoCache[stage.id] = stage;
+    updateState({
+      currentStageId: stage.id,
+      stageInfoCache: { ...stageInfoCache },
+    });
+    currentStageId = stage.id;
+    document.querySelectorAll('.stage-node').forEach((node) => {
+      const stageKey = node.getAttribute('data-stage');
+      node.classList.toggle('active', stageKey === stage.id);
+    });
     const title = document.getElementById('stageTitle');
     const desc = document.getElementById('stageDesc');
     const branchList = document.getElementById('stageBranches');
@@ -252,6 +267,109 @@
       li.textContent = branch;
       branchList.appendChild(li);
     });
+    renderStageActions(stage);
+    renderStageActionStatus(stage.id);
+  }
+
+  function renderStageActions(stage) {
+    if (!stageActionsContainer) {
+      return;
+    }
+    stageActionsContainer.innerHTML = '';
+    if (!stage.actions || stage.actions.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'stage-actions-empty';
+      empty.textContent = '该阶段暂无自动化动作。';
+      stageActionsContainer.appendChild(empty);
+      return;
+    }
+    const state = stageActionState[stage.id];
+    stage.actions.forEach((action) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'stage-action-button';
+      button.dataset.actionId = action.id;
+
+      const header = document.createElement('div');
+      header.className = 'stage-action-header';
+
+      const title = document.createElement('span');
+      title.className = 'stage-action-title';
+      title.textContent = action.label;
+      header.appendChild(title);
+
+      if (action.autoRunOnSelect) {
+        const badge = document.createElement('span');
+        badge.className = 'stage-action-badge';
+        badge.textContent = '节点点击自动触发';
+        header.appendChild(badge);
+      }
+
+      button.appendChild(header);
+
+      const desc = document.createElement('span');
+      desc.className = 'stage-action-desc';
+      desc.textContent = action.description;
+      button.appendChild(desc);
+
+      if (state && state.actionId === action.id) {
+        button.classList.add(`status-${state.status}`);
+      }
+
+      button.addEventListener('click', () => {
+        vscode.postMessage({ type: 'executeStageAction', stageId: stage.id, stageActionId: action.id });
+      });
+
+      stageActionsContainer.appendChild(button);
+    });
+  }
+
+  function renderStageActionStatus(stageId) {
+    if (!stageActionStatus) {
+      return;
+    }
+    const state = stageActionState[stageId];
+    stageActionStatus.innerHTML = '';
+    if (!state) {
+      stageActionStatus.classList.add('hidden');
+      return;
+    }
+
+    stageActionStatus.classList.remove('hidden');
+
+    const badge = document.createElement('span');
+    badge.className = `stage-action-status-badge status-${state.status}`;
+    badge.textContent =
+      state.status === 'success' ? '执行成功' : state.status === 'error' ? '执行失败' : '已取消';
+    stageActionStatus.appendChild(badge);
+
+    const summary = document.createElement('p');
+    summary.className = 'stage-action-status-summary';
+    summary.textContent = state.message;
+    stageActionStatus.appendChild(summary);
+
+    const meta = document.createElement('p');
+    meta.className = 'stage-action-status-meta';
+    meta.textContent = `最近执行：${new Date(state.timestamp).toLocaleString('zh-CN', {
+      hour12: false,
+    })}`;
+    stageActionStatus.appendChild(meta);
+
+    if (state.executedCommands && state.executedCommands.length > 0) {
+      const listTitle = document.createElement('p');
+      listTitle.className = 'stage-action-status-subtitle';
+      listTitle.textContent = '已执行命令：';
+      stageActionStatus.appendChild(listTitle);
+
+      const list = document.createElement('ul');
+      list.className = 'stage-action-status-commands';
+      state.executedCommands.forEach((command) => {
+        const item = document.createElement('li');
+        item.textContent = command;
+        list.appendChild(item);
+      });
+      stageActionStatus.appendChild(list);
+    }
   }
 
   function attachStageListeners() {
@@ -335,6 +453,29 @@
         break;
       case 'stageInfo':
         updateStageInfo(message.stage);
+        break;
+      case 'stageActionStatus':
+        if (message.stageId) {
+          stageActionState[message.stageId] = {
+            status: message.status,
+            message: message.message,
+            actionId: message.actionId,
+            executedCommands: message.executedCommands || [],
+            timestamp: Date.now(),
+          };
+          updateState({ stageActionState: { ...stageActionState } });
+          const cachedStage = stageInfoCache[message.stageId];
+          if (cachedStage && currentStageId === message.stageId) {
+            renderStageActions(cachedStage);
+          }
+          if (currentStageId === message.stageId) {
+            renderStageActionStatus(message.stageId);
+          }
+          if (cachedStage) {
+            stageInfoCache[message.stageId] = cachedStage;
+            updateState({ stageInfoCache: { ...stageInfoCache } });
+          }
+        }
         break;
       default:
         break;
