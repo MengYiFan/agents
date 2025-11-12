@@ -18,6 +18,16 @@ export const LIFECYCLE_STAGES: LifecycleStage[] = [
     name: '提测',
     description: '准备提测版本，必要时创建 release/<版本号> 分支。',
     recommendedBranches: ['feature/<需求号>-<简述>', 'release/<版本号>'],
+    actions: [
+      {
+        id: 'testing.createReleaseBranch',
+        label: '提测：创建 release 分支',
+        description: '自动切换到 master，拉取最新代码并创建 release/<版本号> 分支。',
+        autoRunOnSelect: true,
+        requiresConfirmation: true,
+        confirmMessage: '将根据 SOP 创建 release/<版本号> 分支，是否继续？',
+      },
+    ],
   },
   {
     id: 'experience',
@@ -42,5 +52,14 @@ export const LIFECYCLE_STAGES: LifecycleStage[] = [
     name: '运营',
     description: '关注线上运行情况，使用 hotfix 流程快速修复。',
     recommendedBranches: ['master', 'hotfix/<缺陷号>'],
+    actions: [
+      {
+        id: 'operation.prepareHotfixBranch',
+        label: '处理紧急产线缺陷',
+        description: '检测工作区是否干净，并基于最新 master 创建 hotfix/<编号> 分支。',
+        requiresConfirmation: true,
+        confirmMessage: '将执行紧急产线缺陷流程，生成 hotfix/<编号> 分支，是否继续？',
+      },
+    ],
   },
 ];

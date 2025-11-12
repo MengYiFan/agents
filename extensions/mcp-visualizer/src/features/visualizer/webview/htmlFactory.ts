@@ -85,6 +85,11 @@ export function getWebviewHtml(
               <p id="stageDesc">点击上方阶段获取生命周期指导。</p>
               <h4>推荐分支</h4>
               <ul id="stageBranches"></ul>
+              <h4>自动化动作</h4>
+              <div id="stageActions" class="stage-actions">
+                <p class="stage-actions-empty">选择阶段后可触发标准化指令。</p>
+              </div>
+              <div id="stageActionStatus" class="stage-action-status hidden"></div>
             </aside>
           </div>
         </template>

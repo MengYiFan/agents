@@ -2,7 +2,8 @@ import * as vscode from 'vscode';
 import { LIFECYCLE_STAGES } from '../data/lifecycleStages';
 import { collectDocs, loadDocContent } from '../../../services/docs/documentService';
 import { checkoutBranch } from '../../../services/git/gitOperations';
-import type { McpDocEntry, SupportedLanguage } from '../../../types';
+import { executeLifecycleAction } from '../../../services/git/lifecycleAutomation';
+import type { LifecycleStage, McpDocEntry, StageAction, SupportedLanguage } from '../../../types';
 import { getWorkspaceRoot } from '../../../shared/workspace/workspaceRoot';
 import { getWebviewHtml } from '../webview/htmlFactory';
 import { INSTRUCTION_ITEMS } from '../data/instructionCatalog';
@@ -16,12 +17,14 @@ interface WebviewMessage {
     | 'openDoc'
     | 'checkoutBranch'
     | 'switchStage'
-    | 'executeInstruction';
+    | 'executeInstruction'
+    | 'executeStageAction';
   docId?: string;
   language?: SupportedLanguage;
   branch?: string;
   stageId?: string;
   instructionId?: string;
+  stageActionId?: string;
 }
 
 export class VisualizerViewProvider implements vscode.WebviewViewProvider {
@@ -78,12 +81,22 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
             const stage = LIFECYCLE_STAGES.find((item) => item.id === message.stageId);
             if (stage) {
               this.postMessage({ type: 'stageInfo', stage });
+              void this.autoRunStageActions(stage);
             }
           }
           break;
         case 'executeInstruction':
           if (message.instructionId) {
             await this.executeInstruction(message.instructionId);
+          }
+          break;
+        case 'executeStageAction':
+          if (message.stageId && message.stageActionId) {
+            const stage = LIFECYCLE_STAGES.find((item) => item.id === message.stageId);
+            const action = stage?.actions?.find((item) => item.id === message.stageActionId);
+            if (stage && action) {
+              await this.runStageAction(stage, action, 'manual');
+            }
           }
           break;
         default:
@@ -181,5 +194,76 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
     }
 
     await executeInstructionAction(this.context, instruction.actionId);
+  }
+
+  private async autoRunStageActions(stage: LifecycleStage): Promise<void> {
+    if (!stage.actions || stage.actions.length === 0) {
+      return;
+    }
+
+    for (const action of stage.actions) {
+      if (action.autoRunOnSelect) {
+        await this.runStageAction(stage, action, 'auto');
+      }
+    }
+  }
+
+  private async runStageAction(
+    stage: LifecycleStage,
+    action: StageAction,
+    trigger: 'auto' | 'manual',
+  ): Promise<void> {
+    const workspaceRoot = getWorkspaceRoot();
+    if (!workspaceRoot) {
+      this.postMessage({
+        type: 'stageActionStatus',
+        stageId: stage.id,
+        actionId: action.id,
+        status: 'error',
+        message: '未检测到有效的工作区，无法执行 Git 自动化操作。',
+        executedCommands: [],
+      });
+      return;
+    }
+
+    if (action.requiresConfirmation) {
+      const confirmation = await vscode.window.showInformationMessage(
+        action.confirmMessage ?? '是否执行该自动化动作？',
+        { modal: trigger === 'auto' },
+        '执行',
+        '取消',
+      );
+      if (confirmation !== '执行') {
+        this.postMessage({
+          type: 'stageActionStatus',
+          stageId: stage.id,
+          actionId: action.id,
+          status: 'cancelled',
+          message: '已取消执行。',
+          executedCommands: [],
+        });
+        return;
+      }
+    }
+
+    const result = await executeLifecycleAction(workspaceRoot, action.id);
+    const status = result.cancelled ? 'cancelled' : result.success ? 'success' : 'error';
+
+    if (status === 'success') {
+      vscode.window.showInformationMessage(result.message);
+    } else if (status === 'cancelled') {
+      vscode.window.showWarningMessage(result.message);
+    } else {
+      vscode.window.showErrorMessage(result.message);
+    }
+
+    this.postMessage({
+      type: 'stageActionStatus',
+      stageId: stage.id,
+      actionId: action.id,
+      status,
+      message: result.message,
+      executedCommands: result.executedCommands,
+    });
   }
 }
