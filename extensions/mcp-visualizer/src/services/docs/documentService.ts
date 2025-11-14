@@ -14,6 +14,9 @@ const LANGUAGE_ORDER: Record<SupportedLanguage, number> = {
   'en-US': 1,
 };
 
+const DOC_DIRECTORIES = ['docs', 'extensions', 'prompts'];
+const IGNORED_DIRECTORIES = new Set(['node_modules', '.git', 'dist', 'out', '.turbo', '.vscode', '.idea']);
+
 export async function collectDocs(workspaceRoot?: string): Promise<McpDocEntry[]> {
   if (!workspaceRoot) {
     return [];
@@ -21,23 +24,28 @@ export async function collectDocs(workspaceRoot?: string): Promise<McpDocEntry[]
 
   const docEntries: McpDocEntry[] = [];
   let rootEntry: McpDocEntry | undefined;
-  const docsDir = path.join(workspaceRoot, 'docs');
 
-  try {
-    const docsDirStat = await fs.stat(docsDir);
-    if (docsDirStat.isDirectory()) {
-      const nestedEntries = await walkForReadme(docsDir, workspaceRoot);
-      docEntries.push(...nestedEntries);
+  const searchDirectories = DOC_DIRECTORIES.map((dir) => path.join(workspaceRoot, dir));
+
+  for (const directory of searchDirectories) {
+    try {
+      const stats = await fs.stat(directory);
+      if (stats.isDirectory()) {
+        const nestedEntries = await walkForReadme(directory, workspaceRoot);
+        docEntries.push(...nestedEntries);
+      }
+    } catch {
+      // 无对应目录时忽略
     }
-  } catch {
-    // 无 docs 目录时忽略
   }
 
   try {
-    const rootReadme = path.join(workspaceRoot, 'README.md');
-    const stat = await fs.stat(rootReadme);
-    if (stat.isFile()) {
-      rootEntry = await buildDocEntry(rootReadme, workspaceRoot, {
+    const rootVariants = await collectVariants(workspaceRoot);
+    if (rootVariants.length > 0) {
+      const preferred =
+        rootVariants.find((variant) => path.basename(variant.filePath).toLowerCase() === 'readme.md') ??
+        rootVariants[0];
+      rootEntry = await buildDocEntry(preferred.filePath, workspaceRoot, {
         id: 'root-readme',
         title: '项目 README',
         description: '仓库根目录说明',
@@ -86,7 +94,7 @@ async function walkForReadme(dir: string, workspaceRoot: string): Promise<McpDoc
   }
 
   for (const entry of entries) {
-    if (entry.isDirectory()) {
+    if (entry.isDirectory() && !IGNORED_DIRECTORIES.has(entry.name)) {
       const nested = await walkForReadme(path.join(dir, entry.name), workspaceRoot);
       result.push(...nested);
     }

@@ -1,22 +1,22 @@
 import type { LifecycleStage } from '../../../types';
+import type { DiagramText } from '../../../shared/localization/i18n';
 
 const BRANCH_LANES = [
-  { name: 'feature/*', y: 200 },
-  { name: 'master', y: 280 },
-  { name: 'uat', y: 360 },
-  { name: 'stage', y: 440 },
-  { name: 'production', y: 520 },
+  { key: 'feature', y: 200 },
+  { key: 'main', y: 280 },
+  { key: 'release', y: 360 },
+  { key: 'hotfix', y: 440 },
+  { key: 'tags', y: 520 },
 ];
 
 const BRANCH_NODES = [
-  { x: 200, y: 200, branch: 'feature/REQ-XXXX', label: '需求分支' },
-  { x: 400, y: 200, branch: 'feature/REQ-XXXX', label: '开发中' },
-  { x: 600, y: 280, branch: 'master', label: '同步主干' },
-  { x: 750, y: 360, branch: 'uat/release', label: 'UAT' },
-  { x: 900, y: 440, branch: 'stage/release', label: 'STAGE' },
-  { x: 1050, y: 520, branch: 'production/release', label: '生产' },
-  { x: 600, y: 200, branch: 'release/vX.Y.Z', label: '提测分支' },
-  { x: 850, y: 200, branch: 'hotfix/BUG-XXXX', label: '热修复' },
+  { x: 200, y: 200, branch: 'feature/REQ-XXXX', labelKey: 'featurePlan' },
+  { x: 380, y: 200, branch: 'feature/REQ-XXXX', labelKey: 'featureBuild' },
+  { x: 560, y: 280, branch: 'master', labelKey: 'mainSync' },
+  { x: 780, y: 360, branch: 'release/vX.Y.Z', labelKey: 'releasePrep' },
+  { x: 940, y: 360, branch: 'release/vX.Y.Z', labelKey: 'releaseVerify' },
+  { x: 820, y: 440, branch: 'hotfix/BUG-XXXX', labelKey: 'hotfix' },
+  { x: 1100, y: 520, branch: 'tags/vX.Y.Z', labelKey: 'production' },
 ];
 
 export function renderStageNodes(stages: LifecycleStage[]): string {
@@ -35,24 +35,26 @@ export function renderStageNodes(stages: LifecycleStage[]): string {
     .join('\n');
 }
 
-export function renderBranchLanes(): string {
-  return BRANCH_LANES.map(
-    (lane) => `
+export function renderBranchLanes(diagramText: DiagramText): string {
+  return BRANCH_LANES.map((lane) => {
+    const label = diagramText.lanes[lane.key as keyof DiagramText['lanes']] ?? lane.key;
+    return `
       <g>
-        <line x1="80" y1="${lane.y}" x2="1120" y2="${lane.y}" stroke="var(--vscode-editorWidget-border)" stroke-dasharray="6 4" />
-        <text x="40" y="${lane.y + 6}" font-size="12" fill="var(--vscode-descriptionForeground)" text-anchor="end">${lane.name}</text>
+        <line x1="80" y1="${lane.y}" x2="1120" y2="${lane.y}" stroke="var(--vscode-editorWidget-border)" stroke-dasharray="6 4"/>
+        <text x="40" y="${lane.y + 6}" font-size="12" fill="var(--vscode-descriptionForeground)" text-anchor="end">${label}</text>
       </g>
-    `,
-  ).join('\n');
+    `;
+  }).join('\n');
 }
 
-export function renderBranchNodes(): string {
-  return BRANCH_NODES.map(
-    (node) => `
+export function renderBranchNodes(diagramText: DiagramText): string {
+  return BRANCH_NODES.map((node) => {
+    const label = diagramText.nodes[node.labelKey as keyof DiagramText['nodes']] ?? node.labelKey;
+    return `
       <g class="branch-node" data-branch="${node.branch}" transform="translate(${node.x}, ${node.y})">
         <ellipse cx="0" cy="0" rx="55" ry="28" fill="var(--vscode-sideBar-background)" stroke="var(--vscode-editorWidget-border)" />
-        <text x="0" y="5" text-anchor="middle" fill="var(--vscode-foreground)" font-size="12">${node.label}</text>
+        <text x="0" y="5" text-anchor="middle" fill="var(--vscode-foreground)" font-size="12">${label}</text>
       </g>
-    `,
-  ).join('\n');
+    `;
+  }).join('\n');
 }

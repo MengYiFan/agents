@@ -10,6 +10,8 @@ import { INSTRUCTION_ITEMS } from '../data/instructionCatalog';
 import { WORKFLOW_STEPS } from '../data/workflowSteps';
 import { executeInstructionAction } from '../../../services/instructions/instructionService';
 import { getAuthorizationStatuses } from '../../../services/auth/authorizationStatusService';
+import { getUiText, resolveSupportedLanguage } from '../../../shared/localization/i18n';
+import type { UiText } from '../../../shared/localization/i18n';
 
 interface WebviewMessage {
   type:
@@ -32,7 +34,20 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
 
   private docs: McpDocEntry[] = [];
 
-  constructor(private readonly context: vscode.ExtensionContext) {}
+  private readonly locale: SupportedLanguage;
+
+  private readonly uiText: UiText;
+
+  constructor(private readonly context: vscode.ExtensionContext) {
+    this.locale = resolveSupportedLanguage(vscode.env.language);
+    this.uiText = getUiText(this.locale);
+
+    this.context.subscriptions.push(
+      vscode.window.onDidChangeActiveColorTheme((theme) => {
+        this.postMessage({ type: 'themeChanged', theme: this.getThemeInfo(theme) });
+      }),
+    );
+  }
 
   public async resolveWebviewView(webviewView: vscode.WebviewView): Promise<void> {
     this.view = webviewView;
@@ -48,6 +63,8 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
       webviewView.webview,
       this.context.extensionUri,
       LIFECYCLE_STAGES,
+      this.uiText,
+      this.locale,
     );
     this.bindMessageListener(webviewView);
     await this.sendInitialData();
@@ -143,6 +160,9 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
       authorizations: webview
         ? getAuthorizationStatuses(webview, this.context.extensionUri)
         : [],
+      locale: this.locale,
+      uiText: this.uiText,
+      theme: this.getThemeInfo(),
     });
   }
 
@@ -265,5 +285,32 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
       message: result.message,
       executedCommands: result.executedCommands,
     });
+  }
+
+  private getThemeInfo(theme: vscode.ColorTheme = vscode.window.activeColorTheme) {
+    let kind: 'light' | 'dark' | 'high-contrast' | 'high-contrast-light' = 'dark';
+    let colorScheme: 'light' | 'dark' = 'dark';
+
+    switch (theme.kind) {
+      case vscode.ColorThemeKind.Light:
+        kind = 'light';
+        colorScheme = 'light';
+        break;
+      case vscode.ColorThemeKind.HighContrastLight:
+        kind = 'high-contrast-light';
+        colorScheme = 'light';
+        break;
+      case vscode.ColorThemeKind.HighContrast:
+        kind = 'high-contrast';
+        colorScheme = 'dark';
+        break;
+      case vscode.ColorThemeKind.Dark:
+      default:
+        kind = 'dark';
+        colorScheme = 'dark';
+        break;
+    }
+
+    return { kind, colorScheme };
   }
 }

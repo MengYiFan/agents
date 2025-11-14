@@ -11,6 +11,8 @@
   const workflowSteps = document.getElementById('workflowSteps');
   const stageActionsContainer = document.getElementById('stageActions');
   const stageActionStatus = document.getElementById('stageActionStatus');
+  const stageCommandsList = document.getElementById('stageCommands');
+  const stageCommandsEmpty = document.getElementById('stageCommandsEmpty');
   const authBadges = document.getElementById('authBadges');
 
   let docs = [];
@@ -20,10 +22,93 @@
   const workflowState = persistedState.workflowValues || {};
   const stageActionState = persistedState.stageActionState || {};
   const stageInfoCache = persistedState.stageInfoCache || {};
+  let uiText = persistedState.uiText || null;
+  let currentLocale = persistedState.locale || 'zh-CN';
 
   function updateState(patch) {
     persistedState = { ...persistedState, ...patch };
     vscode.setState(persistedState);
+  }
+
+  function getText(path) {
+    if (!uiText) {
+      return '';
+    }
+    return path.split('.').reduce((acc, key) => (acc && acc[key] !== undefined ? acc[key] : undefined), uiText) || '';
+  }
+
+  function formatText(template, replacements) {
+    if (!template) {
+      return '';
+    }
+    return template.replace(/\{(\w+)\}/g, (_, key) => (replacements && replacements[key] !== undefined ? replacements[key] : ''));
+  }
+
+  function applyTranslations(text, locale) {
+    if (text) {
+      uiText = text;
+    }
+    if (locale) {
+      currentLocale = locale;
+    }
+    if (uiText) {
+      updateState({ uiText, locale: currentLocale });
+    }
+    document.documentElement.lang = currentLocale;
+
+    document.querySelectorAll('[data-i18n]').forEach((node) => {
+      const key = node.getAttribute('data-i18n');
+      const value = getText(key);
+      if (value) {
+        node.textContent = value;
+      }
+    });
+
+    document.querySelectorAll('[data-i18n-placeholder]').forEach((node) => {
+      const key = node.getAttribute('data-i18n-placeholder');
+      const value = getText(key);
+      if (value) {
+        node.setAttribute('placeholder', value);
+      }
+    });
+
+    if (mcpContent) {
+      const placeholder = getText('docs.placeholder');
+      if (placeholder) {
+        mcpContent.textContent = placeholder;
+      }
+    }
+
+    if (stageActionsContainer) {
+      const empty = stageActionsContainer.querySelector('.stage-actions-empty');
+      const emptyText = getText('stage.actionsEmpty');
+      if (empty && emptyText) {
+        empty.textContent = emptyText;
+      }
+    }
+
+    if (stageCommandsEmpty) {
+      const emptyCommandsText = getText('stage.commandsEmpty');
+      if (emptyCommandsText) {
+        stageCommandsEmpty.textContent = emptyCommandsText;
+      }
+      stageCommandsEmpty.classList.remove('hidden');
+    }
+
+    if (stageCommandsList) {
+      stageCommandsList.classList.add('hidden');
+    }
+  }
+
+  function applyTheme(theme) {
+    if (!theme) {
+      return;
+    }
+    document.documentElement.setAttribute('data-theme-kind', theme.kind);
+    document.documentElement.style.setProperty(
+      '--vscode-color-scheme',
+      theme.colorScheme === 'light' ? 'light' : 'dark',
+    );
   }
 
   function switchTab(targetId) {
@@ -49,11 +134,22 @@
       const item = document.createElement('button');
       item.type = 'button';
       item.className = 'mcp-item';
-      item.textContent = doc.title;
       item.dataset.id = doc.id;
       if (doc.description) {
         item.title = doc.description;
       }
+      const title = document.createElement('span');
+      title.className = 'mcp-item-title';
+      title.textContent = doc.title;
+      item.appendChild(title);
+
+      if (doc.description) {
+        const meta = document.createElement('span');
+        meta.className = 'mcp-item-meta';
+        meta.textContent = doc.description;
+        item.appendChild(meta);
+      }
+
       item.addEventListener('click', () => {
         selectDoc(doc.id, doc.defaultLanguage);
       });
@@ -163,7 +259,7 @@
       if (step.optional) {
         const optionalLabel = document.createElement('span');
         optionalLabel.className = 'step-optional';
-        optionalLabel.textContent = '可选';
+        optionalLabel.textContent = getText('workflow.optionalLabel') || 'Optional';
         header.appendChild(optionalLabel);
       }
 
@@ -211,7 +307,7 @@
     wrapper.className = 'workflow-notes';
 
     const casesField = document.createElement('textarea');
-    casesField.placeholder = '测试用例覆盖情况';
+    casesField.placeholder = getText('workflow.notesCasesPlaceholder') || 'Test coverage notes';
     casesField.value = workflowState[`${step.id}:cases`] || '';
     casesField.addEventListener('input', () => {
       workflowState[`${step.id}:cases`] = casesField.value;
@@ -219,7 +315,7 @@
     });
 
     const archiveField = document.createElement('textarea');
-    archiveField.placeholder = '归档说明、上线记录';
+    archiveField.placeholder = getText('workflow.notesArchivePlaceholder') || 'Release notes & archive records';
     archiveField.value = workflowState[`${step.id}:archive`] || '';
     archiveField.addEventListener('input', () => {
       workflowState[`${step.id}:archive`] = archiveField.value;
@@ -269,6 +365,7 @@
     });
     renderStageActions(stage);
     renderStageActionStatus(stage.id);
+    updateStageCommands(stage);
   }
 
   function renderStageActions(stage) {
@@ -279,7 +376,7 @@
     if (!stage.actions || stage.actions.length === 0) {
       const empty = document.createElement('p');
       empty.className = 'stage-actions-empty';
-      empty.textContent = '该阶段暂无自动化动作。';
+      empty.textContent = getText('stage.actionsEmpty') || 'No automations defined for this stage.';
       stageActionsContainer.appendChild(empty);
       return;
     }
@@ -301,7 +398,7 @@
       if (action.autoRunOnSelect) {
         const badge = document.createElement('span');
         badge.className = 'stage-action-badge';
-        badge.textContent = '节点点击自动触发';
+        badge.textContent = getText('stage.autoBadge') || 'Runs on stage select';
         header.appendChild(badge);
       }
 
@@ -324,6 +421,27 @@
     });
   }
 
+  function updateStageCommands(stage) {
+    if (!stageCommandsList || !stageCommandsEmpty) {
+      return;
+    }
+    stageCommandsList.innerHTML = '';
+    const commands = stage.commandHints || [];
+    if (commands.length === 0) {
+      stageCommandsList.classList.add('hidden');
+      stageCommandsEmpty.classList.remove('hidden');
+      return;
+    }
+    stageCommandsList.classList.remove('hidden');
+    stageCommandsEmpty.classList.add('hidden');
+
+    commands.forEach((command) => {
+      const item = document.createElement('li');
+      item.textContent = command;
+      stageCommandsList.appendChild(item);
+    });
+  }
+
   function renderStageActionStatus(stageId) {
     if (!stageActionStatus) {
       return;
@@ -339,8 +457,12 @@
 
     const badge = document.createElement('span');
     badge.className = `stage-action-status-badge status-${state.status}`;
-    badge.textContent =
-      state.status === 'success' ? '执行成功' : state.status === 'error' ? '执行失败' : '已取消';
+    const statusLabels = {
+      success: getText('stage.status.success') || 'Succeeded',
+      error: getText('stage.status.error') || 'Failed',
+      cancelled: getText('stage.status.cancelled') || 'Cancelled',
+    };
+    badge.textContent = statusLabels[state.status] || statusLabels.error;
     stageActionStatus.appendChild(badge);
 
     const summary = document.createElement('p');
@@ -350,15 +472,16 @@
 
     const meta = document.createElement('p');
     meta.className = 'stage-action-status-meta';
-    meta.textContent = `最近执行：${new Date(state.timestamp).toLocaleString('zh-CN', {
-      hour12: false,
-    })}`;
+    const timestamp = new Date(state.timestamp).toLocaleString(currentLocale || 'en-US', {
+      hour12: currentLocale === 'en-US',
+    });
+    meta.textContent = formatText(getText('stage.status.executedAt'), { timestamp }) || timestamp;
     stageActionStatus.appendChild(meta);
 
     if (state.executedCommands && state.executedCommands.length > 0) {
       const listTitle = document.createElement('p');
       listTitle.className = 'stage-action-status-subtitle';
-      listTitle.textContent = '已执行命令：';
+      listTitle.textContent = getText('stage.status.commandsTitle') || 'Executed commands:';
       stageActionStatus.appendChild(listTitle);
 
       const list = document.createElement('ul');
@@ -421,6 +544,8 @@
     const message = event.data;
     switch (message.type) {
       case 'initialData':
+        applyTranslations(message.uiText, message.locale);
+        applyTheme(message.theme);
         renderDocList(message.docs || []);
         renderInstructions(message.instructions || []);
         renderWorkflow(message.workflow || []);
@@ -476,6 +601,9 @@
             updateState({ stageInfoCache: { ...stageInfoCache } });
           }
         }
+        break;
+      case 'themeChanged':
+        applyTheme(message.theme);
         break;
       default:
         break;
