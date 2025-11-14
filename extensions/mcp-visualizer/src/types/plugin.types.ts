@@ -33,6 +33,7 @@ export interface LifecycleStage {
   description: string;
   recommendedBranches: string[];
   actions?: StageAction[];
+  commandHints?: string[];
 }
 
 export interface InstructionCommand {

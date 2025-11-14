@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import type { LifecycleStage } from '../../../types';
+import type { LifecycleStage, SupportedLanguage } from '../../../types';
+import type { UiText } from '../../../shared/localization/i18n';
 import { renderBranchLanes, renderBranchNodes, renderStageNodes } from './diagram';
 
 function getNonce(): string {
@@ -15,6 +16,8 @@ export function getWebviewHtml(
   webview: vscode.Webview,
   extensionUri: vscode.Uri,
   stages: LifecycleStage[],
+  uiText: UiText,
+  locale: SupportedLanguage,
 ): string {
   const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'assets', 'styles', 'main.css'));
   const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'assets', 'scripts', 'main.js'));
@@ -22,32 +25,32 @@ export function getWebviewHtml(
   const csp = `default-src 'none'; style-src ${webview.cspSource}; img-src ${webview.cspSource} https: data:; script-src 'nonce-${nonce}'`;
 
   return `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="${locale}">
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="Content-Security-Policy" content="${csp}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MCP 可视化</title>
+    <title>${uiText.header.title}</title>
     <link rel="stylesheet" href="${styleUri}">
   </head>
   <body>
     <header class="view-header">
       <div class="view-title">
-        <h1>MCP 可视化助手</h1>
-        <p>串联需求、规范与分支，让协作一目了然。</p>
+        <h1 data-i18n="header.title">${uiText.header.title}</h1>
+        <p data-i18n="header.subtitle">${uiText.header.subtitle}</p>
       </div>
       <div class="auth-badges" id="authBadges"></div>
     </header>
     <div class="tab-container">
       <div class="tab-header">
-        <button class="tab-button active" data-target="listTab">列表集</button>
-        <button class="tab-button" data-target="workflowTab">开发流程</button>
+        <button class="tab-button active" data-target="listTab" data-i18n="tabs.list">${uiText.tabs.list}</button>
+        <button class="tab-button" data-target="workflowTab" data-i18n="tabs.workflow">${uiText.tabs.workflow}</button>
       </div>
       <div id="listTab" class="tab-content active">
         <section class="panel">
           <header class="panel-header">
-            <h2>MCP 列表</h2>
-            <p>集中展示当前项目的 MCP 文档</p>
+            <h2 data-i18n="docs.title">${uiText.docs.title}</h2>
+            <p data-i18n="docs.subtitle">${uiText.docs.subtitle}</p>
           </header>
           <div class="mcp-panel">
             <nav id="mcpNav" class="mcp-nav"></nav>
@@ -55,14 +58,14 @@ export function getWebviewHtml(
               <div class="preview-header">
                 <div class="language-switcher" id="languageSwitcher"></div>
               </div>
-              <article class="mcp-content" id="mcpContent">请选择一个 MCP 查看说明。</article>
+              <article class="mcp-content" id="mcpContent" data-i18n="docs.placeholder">${uiText.docs.placeholder}</article>
             </section>
           </div>
         </section>
         <section class="panel">
           <header class="panel-header">
-            <h2>指令列表</h2>
-            <p>常用自动化动作</p>
+            <h2 data-i18n="instructions.title">${uiText.instructions.title}</h2>
+            <p data-i18n="instructions.subtitle">${uiText.instructions.subtitle}</p>
           </header>
           <div class="instruction-list" id="instructionList"></div>
         </section>
@@ -76,20 +79,23 @@ export function getWebviewHtml(
                 <g id="stageNodes">
                   ${renderStageNodes(stages)}
                 </g>
-                ${renderBranchLanes()}
-                ${renderBranchNodes()}
+                ${renderBranchLanes(uiText.diagram)}
+                ${renderBranchNodes(uiText.diagram)}
               </svg>
             </div>
             <aside class="stage-info">
-              <h3 id="stageTitle">选择一个阶段</h3>
-              <p id="stageDesc">点击上方阶段获取生命周期指导。</p>
-              <h4>推荐分支</h4>
+              <h3 id="stageTitle" data-i18n="stage.infoTitle">${uiText.stage.infoTitle}</h3>
+              <p id="stageDesc" data-i18n="stage.infoDescription">${uiText.stage.infoDescription}</p>
+              <h4 data-i18n="stage.branchesTitle">${uiText.stage.branchesTitle}</h4>
               <ul id="stageBranches"></ul>
-              <h4>自动化动作</h4>
+              <h4 data-i18n="stage.actionsTitle">${uiText.stage.actionsTitle}</h4>
               <div id="stageActions" class="stage-actions">
-                <p class="stage-actions-empty">选择阶段后可触发标准化指令。</p>
+                <p class="stage-actions-empty" data-i18n="stage.actionsEmpty">${uiText.stage.actionsEmpty}</p>
               </div>
               <div id="stageActionStatus" class="stage-action-status hidden"></div>
+              <h4 data-i18n="stage.commandsTitle">${uiText.stage.commandsTitle}</h4>
+              <ul id="stageCommands" class="stage-commands"></ul>
+              <p id="stageCommandsEmpty" class="stage-commands-empty" data-i18n="stage.commandsEmpty">${uiText.stage.commandsEmpty}</p>
             </aside>
           </div>
         </template>
