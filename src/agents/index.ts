@@ -7,6 +7,7 @@ import { codeReviewAgent } from "./quality/codeReviewAgent.js";
 import { codeGuidelinesMcp } from "./quality/codeGuidelinesMcp.js";
 import { gitMcpAgent } from "./integrations/gitMcpAgent.js";
 import { grafanaMcpAgent } from "./integrations/grafanaMcpAgent.js";
+import { sentryMcpAgent } from "./integrations/sentryMcpAgent.js";
 
 export const registeredAgents: Agent[] = [
   echoAgent,
@@ -17,4 +18,5 @@ export const registeredAgents: Agent[] = [
   codeGuidelinesMcp,
   gitMcpAgent,
   grafanaMcpAgent,
+  sentryMcpAgent,
 ];
