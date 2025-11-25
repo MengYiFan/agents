@@ -1,5 +1,7 @@
 import { OAuthTokenSet, TokenStore } from "./types.js";
 
+export type { TokenStore } from "./types.js";
+
 export class InMemoryTokenStore implements TokenStore {
   private readonly tokens = new Map<string, OAuthTokenSet>();
 
