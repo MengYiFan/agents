@@ -1,4 +1,4 @@
-import { Agent } from "mastra";
+import { Agent } from "@mastra/core/agent";
 import {
   SentryMcpClient,
   type SentryAnnotatedIssue,
@@ -57,6 +57,7 @@ interface NotificationResultPayload {
 type SentryAgentResult = FetchIssuesPayload | NotificationResultPayload;
 
 const sentryTool = {
+  id: "sentryMcp",
   name: "sentryMcp",
   description:
     "通过 Sentry MCP 获取 Issue 并基于可配置枚举进行打标，可对高风险问题触发 Lark/邮件通知。自动缓存登录态以减少重复认证。",
@@ -158,9 +159,9 @@ const sentryTool = {
               text:
                 notificationConfig.larkTemplate ??
                 `Sentry 高风险告警（${highRiskIssues.length} 条）：\n` +
-                  highRiskIssues
-                    .map((item) => `${item.title} [${item.riskLabel ?? item.riskId}] -> ${item.permalink ?? ""}`)
-                    .join("\n"),
+                highRiskIssues
+                  .map((item) => `${item.title} [${item.riskLabel ?? item.riskId}] -> ${item.permalink ?? ""}`)
+                  .join("\n"),
             },
           };
 
@@ -225,11 +226,14 @@ const sentryTool = {
   },
 };
 
+import { openaiModel } from "../../models.js";
+
 export const sentryMcpAgent = new Agent({
   name: "sentry-mcp-agent",
   instructions:
     "你是 Sentry Issue 的分析与预警专家。通过 Sentry MCP 拉取最新问题，优先检查 top20，并按照风险、问题类型、频率等枚举词典完成打标。保持登录态，确保授权有效；高风险问题要准备 Lark 和邮件通知摘要。所有枚举值须使用提供的词典或覆盖项，必要时给出补充说明与下一步行动建议。",
   system:
     "1) 默认获取并分析最近的前 20 条 issue；2) 输出时要列出风险等级、问题类型、频率分档，并说明判定依据；3) 对高风险问题给出通知摘要和责任人建议；4) 可以按需请求自定义枚举词典或告警配置。",
-  tools: [sentryTool],
+  model: openaiModel,
+  tools: { sentryMcp: sentryTool },
 });

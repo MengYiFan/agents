@@ -1,3 +1,6 @@
-import mastra from "../index.js";
+import { Mastra } from "@mastra/core";
+import { registeredAgents } from "./agents/index.js";
 
-export default mastra;
+export const mastra = new Mastra({
+  agents: registeredAgents,
+});

@@ -1,25 +1,16 @@
-import { Mastra } from "mastra";
-import { registeredAgents } from "./agents/index.js";
-
-const mastra = new Mastra({
-  agents: registeredAgents,
-});
-
-export default mastra;
+import { mastra } from "./mastra/index.js";
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const run = async () => {
-    const echoResponse = await mastra.run("echo-agent", {
-      prompt: "Hello Mastra!",
-    });
+    const echoAgent = mastra.getAgent("echo-agent");
+    const echoResponse = await echoAgent.generate("Hello Mastra!");
 
-    console.log("Echo Agent Response:\n", echoResponse.output);
+    console.log("Echo Agent Response:\n", echoResponse.text);
 
-    const summaryResponse = await mastra.run("summarizer-agent", {
-      prompt: "Mastra helps developers build AI agents with batteries-included tooling.",
-    });
+    const summarizerAgent = mastra.getAgent("summarizer-agent");
+    const summaryResponse = await summarizerAgent.generate("Mastra helps developers build AI agents with batteries-included tooling.");
 
-    console.log("Summarizer Agent Response:\n", summaryResponse.output);
+    console.log("Summarizer Agent Response:\n", summaryResponse.text);
   };
 
   run().catch((error) => {

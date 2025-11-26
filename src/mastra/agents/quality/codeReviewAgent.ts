@@ -1,4 +1,4 @@
-import { Agent } from "mastra";
+import { Agent } from "@mastra/core/agent";
 import { existsSync, readFileSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -40,9 +40,12 @@ const combinedInstructions = [
   "在引用规范或问题时，请标明具体文件路径与行号，确保建议可操作。",
 ].join("\n\n");
 
+import { deepseekModel } from "../../models.js";
+
 export const codeReviewAgent = new Agent({
   name: "code-review-agent",
   instructions: combinedInstructions,
   system: combinedInstructions,
-  tools: [],
+  model: deepseekModel,
+  tools: {},
 });

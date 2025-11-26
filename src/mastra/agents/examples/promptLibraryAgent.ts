@@ -1,4 +1,4 @@
-import { Agent } from "mastra";
+import { Agent } from "@mastra/core/agent";
 import { promises as fs } from "fs";
 import path from "path";
 
@@ -79,6 +79,7 @@ const readPromptFromFile = async (promptName: string): Promise<PromptDefinition>
 };
 
 const loadPromptTool = {
+  id: "loadPrompt",
   name: "loadPrompt",
   description:
     "读取 prompts 目录中的 Markdown 提示定义，并返回解析后的注释元数据和 Markdown 内容。",
@@ -105,11 +106,14 @@ const loadPromptTool = {
   },
 };
 
+import { openaiModel } from "../../models.js";
+
 export const promptLibraryAgent = new Agent({
   name: "prompt-library-agent",
   instructions:
     "根据用户提供的 prompt 名称，从 prompts 目录加载对应的 Markdown，并提供结构化的提示定义。",
   system:
     "你是一名提示库助手，可以解析 prompts 目录下的 Markdown 文件，提取注释中的元数据并返回提示内容。",
-  tools: [loadPromptTool],
+  model: openaiModel,
+  tools: { loadPrompt: loadPromptTool },
 });

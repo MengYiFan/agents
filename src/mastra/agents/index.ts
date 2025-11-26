@@ -1,4 +1,4 @@
-import type { Agent } from "mastra";
+import type { Agent } from "@mastra/core";
 import { echoAgent } from "./examples/echoAgent.js";
 import { summarizerAgent } from "./examples/summarizerAgent.js";
 import { promptLibraryAgent } from "./examples/promptLibraryAgent.js";

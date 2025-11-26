@@ -1,4 +1,4 @@
-import { Agent } from "mastra";
+import { Agent } from "@mastra/core/agent";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import { promises as fs } from "fs";
@@ -577,6 +577,7 @@ const evaluateBranchCompliance = (
 };
 
 const gitWorkflowTool = {
+  id: "gitWorkflow",
   name: "gitWorkflow",
   description:
     "根据结构化指令执行 Git 工作流操作（如状态查询、拉取、提交、合并、推送等），并提供后续提醒与推荐指令。",
@@ -617,14 +618,14 @@ const gitWorkflowTool = {
     const stageDefinition = stageKey ? lifecycleGuidance[stageKey] : undefined;
     const lifecycleInfo = stageDefinition
       ? {
-          stageKey: stageDefinition.key,
-          stageName: stageDefinition.name,
-          summary: stageDefinition.summary,
-          branchFocus: stageDefinition.branchFocus,
-          steps: stageDefinition.steps,
-          nextStage: stageDefinition.nextStage,
-          notes: stageDefinition.notes,
-        }
+        stageKey: stageDefinition.key,
+        stageName: stageDefinition.name,
+        summary: stageDefinition.summary,
+        branchFocus: stageDefinition.branchFocus,
+        steps: stageDefinition.steps,
+        nextStage: stageDefinition.nextStage,
+        notes: stageDefinition.notes,
+      }
       : undefined;
 
     switch (action) {
@@ -829,11 +830,14 @@ const gitWorkflowTool = {
   },
 };
 
+import { openaiModel } from "../../models.js";
+
 export const gitMcpAgent = new Agent({
   name: "git-mcp-agent",
   instructions:
-    "提供结构化的 Git 分支管理功能，可执行提交、拉取、合并等操作，并在需要时挂起提交流程以等待代码审查。",
+    "你是 Git 工作流专家。根据用户意图调用 gitWorkflow 工具执行操作，并基于返回的生命周期指引（lifecycleGuide）提供下一步建议。对于 status/diff 结果，需简要分析变更点；对于 commit/push 操作，需确认是否符合分支规范。",
   system:
-    "你是一名 Git 工作流管家。根据调用方的结构化参数执行 git 命令，确保输出包含关键提醒与推荐指令。",
-  tools: [gitWorkflowTool],
+    "1) 优先使用 gitWorkflow 执行操作；2) 每次操作后检查返回的 reminders 与 recommendedCommands；3) 遇到分支不规范时，引用 branchCompliance 的建议引导用户；4) 涉及代码审查时，提示用户关注 review 状态。",
+  model: openaiModel,
+  tools: { gitWorkflow: gitWorkflowTool },
 });
