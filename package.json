@@ -10,6 +10,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "ai": "^5.0.0",
     "@ai-sdk/google": "^2.0.43",
     "@ai-sdk/openai": "^2.0.73",
     "@mastra/core": "^0.8.3",
@@ -19,5 +20,8 @@
   "devDependencies": {
     "@types/node": "^20.11.0",
     "typescript": "^5.4.0"
+  },
+  "overrides": {
+    "ai": "^5.0.0"
   }
 }
