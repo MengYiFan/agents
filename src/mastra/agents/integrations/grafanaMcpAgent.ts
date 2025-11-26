@@ -1,5 +1,6 @@
 import { Buffer } from "node:buffer";
 import { Agent } from "@mastra/core/agent";
+import { z } from "zod";
 import {
   GrafanaMcpClient,
   type GrafanaMcpConfig,
@@ -148,44 +149,31 @@ const getGrafanaClient = (credentials?: GrafanaCredentialsInput): GrafanaMcpClie
 
 const grafanaTool = {
   id: "grafanaMcp",
-  name: "grafanaMcp",
   description:
     "与 Grafana MCP 服务交互，支持仪表盘搜索、仪表盘详情、数据源列表与面板定义解析，自动处理内部环境登录。",
-  parameters: {
-    type: "object",
-    properties: {
-      action: {
-        type: "string",
-        enum: ["searchDashboards", "getDashboard", "listDatasources", "getPanel"],
-        description: "要执行的 Grafana 操作。",
-      },
-      query: {
-        type: "string",
-        description: "搜索仪表盘时使用的关键字。仅在 action=searchDashboards 时有效。",
-      },
-      uid: {
-        type: "string",
-        description: "仪表盘的唯一 UID。",
-      },
-      panelId: {
-        type: "number",
-        description: "需要解析的面板 ID，仅在 action=getPanel 时必填。",
-      },
-      credentials: {
-        type: "object",
-        description:
-          "可选的临时凭据覆盖项，可传入 Grafana 基础地址与谷歌服务账号密钥信息（clientEmail、privateKey、targetAudience 或完整 serviceAccountJson）。",
-        properties: {
-          baseUrl: { type: "string" },
-          googleClientEmail: { type: "string" },
-          googlePrivateKey: { type: "string" },
-          googleTargetAudience: { type: "string" },
-          serviceAccountJson: { type: "string" },
-        },
-      },
-    },
-    required: ["action"],
-  },
+  inputSchema: z.object({
+    action: z
+      .enum(["searchDashboards", "getDashboard", "listDatasources", "getPanel"])
+      .describe("要执行的 Grafana 操作。"),
+    query: z
+      .string()
+      .optional()
+      .describe("搜索仪表盘时使用的关键字。仅在 action=searchDashboards 时有效。"),
+    uid: z.string().optional().describe("仪表盘的唯一 UID。"),
+    panelId: z.number().optional().describe("需要解析的面板 ID，仅在 action=getPanel 时必填。"),
+    credentials: z
+      .object({
+        baseUrl: z.string().optional(),
+        googleClientEmail: z.string().optional(),
+        googlePrivateKey: z.string().optional(),
+        googleTargetAudience: z.string().optional(),
+        serviceAccountJson: z.string().optional(),
+      })
+      .optional()
+      .describe(
+        "可选的临时凭据覆盖项，可传入 Grafana 基础地址与谷歌服务账号密钥信息（clientEmail、privateKey、targetAudience 或完整 serviceAccountJson）。",
+      ),
+  }),
   execute: async ({ action, query, uid, panelId, credentials }: GrafanaOperationInput): Promise<GrafanaOperationResult> => {
     const client = getGrafanaClient(credentials);
 
@@ -228,6 +216,7 @@ const grafanaTool = {
 import { openaiModel } from "../../models.js";
 
 export const grafanaMcpAgent = new Agent({
+  id: "grafana-mcp-agent",
   name: "grafana-mcp-agent",
   instructions: "封装 Grafana MCP 能力，能够通过谷歌 IAP 自动完成登录并检索关键监控信息。",
   system:

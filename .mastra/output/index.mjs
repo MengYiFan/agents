@@ -6,6 +6,7 @@ import { Mastra, Telemetry } from '@mastra/core';
 import { Agent } from '@mastra/core/agent';
 import { openai, createOpenAI } from '@ai-sdk/openai';
 import { google } from '@ai-sdk/google';
+import { z } from 'zod';
 import { promises, existsSync, readFileSync, createReadStream, lstatSync } from 'fs';
 import path, { join } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -19,7 +20,6 @@ import { createServer } from 'http';
 import { Http2ServerRequest } from 'http2';
 import { Readable } from 'stream';
 import { Container } from '@mastra/core/di';
-import { z } from 'zod';
 import { isVercelTool } from '@mastra/core/tools';
 import { ReadableStream as ReadableStream$1 } from 'node:stream/web';
 
@@ -32,6 +32,7 @@ const deepseek = createOpenAI({
 const deepseekModel = deepseek("deepseek-chat");
 
 const echoAgent = new Agent({
+  id: "echo-agent",
   name: "echo-agent",
   instructions: "Echoes the user's prompt back to them.",
   system: "You are a helpful assistant that simply repeats user inputs.",
@@ -40,6 +41,7 @@ const echoAgent = new Agent({
 });
 
 const summarizerAgent = new Agent({
+  id: "summarizer-agent",
   name: "summarizer-agent",
   instructions: "Summarize the content provided by the user.",
   system: "You are a helpful assistant that summarizes text.",
@@ -88,18 +90,10 @@ const readPromptFromFile = async (promptName) => {
 };
 const loadPromptTool = {
   id: "loadPrompt",
-  name: "loadPrompt",
   description: "\u8BFB\u53D6 prompts \u76EE\u5F55\u4E2D\u7684 Markdown \u63D0\u793A\u5B9A\u4E49\uFF0C\u5E76\u8FD4\u56DE\u89E3\u6790\u540E\u7684\u6CE8\u91CA\u5143\u6570\u636E\u548C Markdown \u5185\u5BB9\u3002",
-  parameters: {
-    type: "object",
-    properties: {
-      promptName: {
-        type: "string",
-        description: "\u8981\u52A0\u8F7D\u7684\u63D0\u793A\u6587\u4EF6\u540D\u79F0\uFF08\u4E0D\u5305\u542B .md \u540E\u7F00\uFF09\u3002"
-      }
-    },
-    required: ["promptName"]
-  },
+  inputSchema: z.object({
+    promptName: z.string().describe("\u8981\u52A0\u8F7D\u7684\u63D0\u793A\u6587\u4EF6\u540D\u79F0\uFF08\u4E0D\u5305\u542B .md \u540E\u7F00\uFF09\u3002")
+  }),
   execute: async ({ promptName }) => {
     try {
       return await readPromptFromFile(promptName);
@@ -112,6 +106,7 @@ const loadPromptTool = {
   }
 };
 const promptLibraryAgent = new Agent({
+  id: "prompt-library-agent",
   name: "prompt-library-agent",
   instructions: "\u6839\u636E\u7528\u6237\u63D0\u4F9B\u7684 prompt \u540D\u79F0\uFF0C\u4ECE prompts \u76EE\u5F55\u52A0\u8F7D\u5BF9\u5E94\u7684 Markdown\uFF0C\u5E76\u63D0\u4F9B\u7ED3\u6784\u5316\u7684\u63D0\u793A\u5B9A\u4E49\u3002",
   system: "\u4F60\u662F\u4E00\u540D\u63D0\u793A\u5E93\u52A9\u624B\uFF0C\u53EF\u4EE5\u89E3\u6790 prompts \u76EE\u5F55\u4E0B\u7684 Markdown \u6587\u4EF6\uFF0C\u63D0\u53D6\u6CE8\u91CA\u4E2D\u7684\u5143\u6570\u636E\u5E76\u8FD4\u56DE\u63D0\u793A\u5185\u5BB9\u3002",
@@ -120,6 +115,7 @@ const promptLibraryAgent = new Agent({
 });
 
 const testPromptAgent = new Agent({
+  id: "test-prompt-agent",
   name: "test-prompt-agent",
   instructions: "\u672C\u5730 Copilot \u6D4B\u8BD5\u4EE3\u7406\uFF0C\u9A8C\u8BC1\u5728\u8C03\u7528\u65F6\u80FD\u591F\u8FD4\u56DE\u7A33\u5B9A\u4E14\u53EF\u9884\u6D4B\u7684\u54CD\u5E94\u3002\u7528\u6237\u8F93\u5165 Hello \u65F6\u5FC5\u987B\u56FA\u5B9A\u56DE\u590D Wooooo~\u3002",
   system: "\u4F60\u662F\u4E00\u4E2A\u672C\u5730\u6D4B\u8BD5\u4EE3\u7406\uFF0C\u7528\u4E8E\u9A8C\u8BC1 Copilot \u7684\u8C03\u7528\u94FE\u8DEF\u3002\u6536\u5230\u7528\u6237\u8F93\u5165 Hello\uFF08\u4E0D\u533A\u5206\u5927\u5C0F\u5199\uFF09\u65F6\uFF0C\u53EA\u8FD4\u56DE\u56FA\u5B9A\u5B57\u7B26\u4E32\uFF1AWooooo~\u3002\u5BF9\u4E8E\u5176\u4ED6\u8F93\u5165\uFF0C\u7B80\u77ED\u786E\u8BA4\u8FD9\u662F\u6D4B\u8BD5\u4EE3\u7406\u7684\u54CD\u5E94\u5E76\u4FDD\u6301\u7B80\u6D01\u3002",
@@ -155,6 +151,7 @@ ${projectInstructions}` : "\u672A\u627E\u5230\u9879\u76EE instructions.md\uFF0C\
   "\u5728\u5F15\u7528\u89C4\u8303\u6216\u95EE\u9898\u65F6\uFF0C\u8BF7\u6807\u660E\u5177\u4F53\u6587\u4EF6\u8DEF\u5F84\u4E0E\u884C\u53F7\uFF0C\u786E\u4FDD\u5EFA\u8BAE\u53EF\u64CD\u4F5C\u3002"
 ].join("\n\n");
 const codeReviewAgent = new Agent({
+  id: "code-review-agent",
   name: "code-review-agent",
   instructions: combinedInstructions,
   system: combinedInstructions,
@@ -318,21 +315,11 @@ ${technologySections}
 };
 const injectCodeRulesDocumentTool = {
   id: "injectCodeRulesDocument",
-  name: "injectCodeRulesDocument",
   description: "\u5728\u5F53\u524D\u9879\u76EE\u6839\u76EE\u5F55\u751F\u6210\u6216\u66F4\u65B0 .rules \u4EE3\u7801\u89C4\u8303\u8BF4\u660E\u6587\u6863\uFF0C\u53EF\u9009\u62E9\u8986\u76D6\u5DF2\u6709\u5185\u5BB9\u3002",
-  parameters: {
-    type: "object",
-    properties: {
-      overwrite: {
-        type: "boolean",
-        description: "\u662F\u5426\u8986\u76D6\u5DF2\u5B58\u5728\u7684 .rules \u6587\u4EF6\uFF0C\u9ED8\u8BA4\u4E0D\u8986\u76D6\u3002"
-      },
-      customContent: {
-        type: "string",
-        description: "\u53EF\u9009\u7684\u81EA\u5B9A\u4E49\u6587\u6863\u5185\u5BB9\uFF0C\u4E0D\u63D0\u4F9B\u65F6\u4F7F\u7528\u9ED8\u8BA4\u89C4\u8303\u6A21\u677F\u3002"
-      }
-    }
-  },
+  inputSchema: z.object({
+    overwrite: z.boolean().optional().describe("\u662F\u5426\u8986\u76D6\u5DF2\u5B58\u5728\u7684 .rules \u6587\u4EF6\uFF0C\u9ED8\u8BA4\u4E0D\u8986\u76D6\u3002"),
+    customContent: z.string().optional().describe("\u53EF\u9009\u7684\u81EA\u5B9A\u4E49\u6587\u6863\u5185\u5BB9\uFF0C\u4E0D\u63D0\u4F9B\u65F6\u4F7F\u7528\u9ED8\u8BA4\u89C4\u8303\u6A21\u677F\u3002")
+  }),
   execute: async (input = {}) => {
     const { overwrite = false, customContent } = input;
     const useCustomContent = typeof customContent === "string" && customContent.trim().length > 0;
@@ -366,6 +353,7 @@ const injectCodeRulesDocumentTool = {
   }
 };
 const codeGuidelinesMcp = new Agent({
+  id: "code-guidelines-mcp",
   name: "code-guidelines-mcp",
   instructions: "\u5F53\u5F00\u53D1\u8005\u9700\u8981\u6CE8\u5165\u6216\u66F4\u65B0\u9879\u76EE\u7684\u4EE3\u7801\u89C4\u8303\u65F6\uFF0C\u8C03\u7528 injectCodeRulesDocument \u5DE5\u5177\u751F\u6210 .rules \u6587\u4EF6\u3002",
   system: "\u4F60\u662F\u4E00\u540D\u4EE3\u7801\u89C4\u8303\u7EF4\u62A4\u52A9\u624B\uFF0C\u8D1F\u8D23\u786E\u4FDD\u9879\u76EE\u6839\u76EE\u5F55\u5B58\u5728\u6700\u65B0\u7684 .rules \u89C4\u8303\u6587\u6863\u3002\u8BC4\u4F30\u9700\u6C42\u540E\u518D\u8C03\u7528\u5DE5\u5177\uFF0C\u907F\u514D\u91CD\u590D\u8986\u76D6\u3002",
@@ -810,36 +798,16 @@ const evaluateBranchCompliance = (branch, stageDefinition) => {
 };
 const gitWorkflowTool = {
   id: "gitWorkflow",
-  name: "gitWorkflow",
   description: "\u6839\u636E\u7ED3\u6784\u5316\u6307\u4EE4\u6267\u884C Git \u5DE5\u4F5C\u6D41\u64CD\u4F5C\uFF08\u5982\u72B6\u6001\u67E5\u8BE2\u3001\u62C9\u53D6\u3001\u63D0\u4EA4\u3001\u5408\u5E76\u3001\u63A8\u9001\u7B49\uFF09\uFF0C\u5E76\u63D0\u4F9B\u540E\u7EED\u63D0\u9192\u4E0E\u63A8\u8350\u6307\u4EE4\u3002",
-  parameters: {
-    type: "object",
-    properties: {
-      action: {
-        type: "string",
-        enum: [
-          "status",
-          "pull",
-          "commit",
-          "merge",
-          "checkout",
-          "createBranch",
-          "push",
-          "lifecycleGuide"
-        ],
-        description: "\u8981\u6267\u884C\u7684 Git \u64CD\u4F5C\u3002"
-      },
-      options: {
-        type: "object",
-        description: "\u9488\u5BF9\u6307\u5B9A\u64CD\u4F5C\u7684\u989D\u5916\u53C2\u6570\u3002"
-      },
-      preCommitReview: {
-        type: "object",
-        description: "\u63D0\u4EA4\u524D\u7684\u4EE3\u7801\u5BA1\u67E5\u914D\u7F6E\u3002\u4EC5\u5728 action=commit \u65F6\u751F\u6548\u3002"
-      }
-    },
-    required: ["action"]
-  },
+  inputSchema: z.object({
+    action: z.enum(["status", "pull", "commit", "merge", "checkout", "createBranch", "push", "lifecycleGuide"]).describe("\u8981\u6267\u884C\u7684 Git \u64CD\u4F5C\u3002"),
+    options: z.record(z.any()).optional().describe("\u9488\u5BF9\u6307\u5B9A\u64CD\u4F5C\u7684\u989D\u5916\u53C2\u6570\u3002"),
+    preCommitReview: z.object({
+      enabled: z.boolean().optional(),
+      reviewPrompt: z.string().optional(),
+      approval: z.boolean().optional()
+    }).optional().describe("\u63D0\u4EA4\u524D\u7684\u4EE3\u7801\u5BA1\u67E5\u914D\u7F6E\u3002\u4EC5\u5728 action=commit \u65F6\u751F\u6548\u3002")
+  }),
   execute: async ({ action, options, preCommitReview }) => {
     const executedCommands = [];
     let output = "";
@@ -1019,6 +987,7 @@ const gitWorkflowTool = {
   }
 };
 const gitMcpAgent = new Agent({
+  id: "git-mcp-agent",
   name: "git-mcp-agent",
   instructions: "\u4F60\u662F Git \u5DE5\u4F5C\u6D41\u4E13\u5BB6\u3002\u6839\u636E\u7528\u6237\u610F\u56FE\u8C03\u7528 gitWorkflow \u5DE5\u5177\u6267\u884C\u64CD\u4F5C\uFF0C\u5E76\u57FA\u4E8E\u8FD4\u56DE\u7684\u751F\u547D\u5468\u671F\u6307\u5F15\uFF08lifecycleGuide\uFF09\u63D0\u4F9B\u4E0B\u4E00\u6B65\u5EFA\u8BAE\u3002\u5BF9\u4E8E status/diff \u7ED3\u679C\uFF0C\u9700\u7B80\u8981\u5206\u6790\u53D8\u66F4\u70B9\uFF1B\u5BF9\u4E8E commit/push \u64CD\u4F5C\uFF0C\u9700\u786E\u8BA4\u662F\u5426\u7B26\u5408\u5206\u652F\u89C4\u8303\u3002",
   system: "1) \u4F18\u5148\u4F7F\u7528 gitWorkflow \u6267\u884C\u64CD\u4F5C\uFF1B2) \u6BCF\u6B21\u64CD\u4F5C\u540E\u68C0\u67E5\u8FD4\u56DE\u7684 reminders \u4E0E recommendedCommands\uFF1B3) \u9047\u5230\u5206\u652F\u4E0D\u89C4\u8303\u65F6\uFF0C\u5F15\u7528 branchCompliance \u7684\u5EFA\u8BAE\u5F15\u5BFC\u7528\u6237\uFF1B4) \u6D89\u53CA\u4EE3\u7801\u5BA1\u67E5\u65F6\uFF0C\u63D0\u793A\u7528\u6237\u5173\u6CE8 review \u72B6\u6001\u3002",
@@ -1425,42 +1394,22 @@ const getGrafanaClient = (credentials) => {
 };
 const grafanaTool = {
   id: "grafanaMcp",
-  name: "grafanaMcp",
   description: "\u4E0E Grafana MCP \u670D\u52A1\u4EA4\u4E92\uFF0C\u652F\u6301\u4EEA\u8868\u76D8\u641C\u7D22\u3001\u4EEA\u8868\u76D8\u8BE6\u60C5\u3001\u6570\u636E\u6E90\u5217\u8868\u4E0E\u9762\u677F\u5B9A\u4E49\u89E3\u6790\uFF0C\u81EA\u52A8\u5904\u7406\u5185\u90E8\u73AF\u5883\u767B\u5F55\u3002",
-  parameters: {
-    type: "object",
-    properties: {
-      action: {
-        type: "string",
-        enum: ["searchDashboards", "getDashboard", "listDatasources", "getPanel"],
-        description: "\u8981\u6267\u884C\u7684 Grafana \u64CD\u4F5C\u3002"
-      },
-      query: {
-        type: "string",
-        description: "\u641C\u7D22\u4EEA\u8868\u76D8\u65F6\u4F7F\u7528\u7684\u5173\u952E\u5B57\u3002\u4EC5\u5728 action=searchDashboards \u65F6\u6709\u6548\u3002"
-      },
-      uid: {
-        type: "string",
-        description: "\u4EEA\u8868\u76D8\u7684\u552F\u4E00 UID\u3002"
-      },
-      panelId: {
-        type: "number",
-        description: "\u9700\u8981\u89E3\u6790\u7684\u9762\u677F ID\uFF0C\u4EC5\u5728 action=getPanel \u65F6\u5FC5\u586B\u3002"
-      },
-      credentials: {
-        type: "object",
-        description: "\u53EF\u9009\u7684\u4E34\u65F6\u51ED\u636E\u8986\u76D6\u9879\uFF0C\u53EF\u4F20\u5165 Grafana \u57FA\u7840\u5730\u5740\u4E0E\u8C37\u6B4C\u670D\u52A1\u8D26\u53F7\u5BC6\u94A5\u4FE1\u606F\uFF08clientEmail\u3001privateKey\u3001targetAudience \u6216\u5B8C\u6574 serviceAccountJson\uFF09\u3002",
-        properties: {
-          baseUrl: { type: "string" },
-          googleClientEmail: { type: "string" },
-          googlePrivateKey: { type: "string" },
-          googleTargetAudience: { type: "string" },
-          serviceAccountJson: { type: "string" }
-        }
-      }
-    },
-    required: ["action"]
-  },
+  inputSchema: z.object({
+    action: z.enum(["searchDashboards", "getDashboard", "listDatasources", "getPanel"]).describe("\u8981\u6267\u884C\u7684 Grafana \u64CD\u4F5C\u3002"),
+    query: z.string().optional().describe("\u641C\u7D22\u4EEA\u8868\u76D8\u65F6\u4F7F\u7528\u7684\u5173\u952E\u5B57\u3002\u4EC5\u5728 action=searchDashboards \u65F6\u6709\u6548\u3002"),
+    uid: z.string().optional().describe("\u4EEA\u8868\u76D8\u7684\u552F\u4E00 UID\u3002"),
+    panelId: z.number().optional().describe("\u9700\u8981\u89E3\u6790\u7684\u9762\u677F ID\uFF0C\u4EC5\u5728 action=getPanel \u65F6\u5FC5\u586B\u3002"),
+    credentials: z.object({
+      baseUrl: z.string().optional(),
+      googleClientEmail: z.string().optional(),
+      googlePrivateKey: z.string().optional(),
+      googleTargetAudience: z.string().optional(),
+      serviceAccountJson: z.string().optional()
+    }).optional().describe(
+      "\u53EF\u9009\u7684\u4E34\u65F6\u51ED\u636E\u8986\u76D6\u9879\uFF0C\u53EF\u4F20\u5165 Grafana \u57FA\u7840\u5730\u5740\u4E0E\u8C37\u6B4C\u670D\u52A1\u8D26\u53F7\u5BC6\u94A5\u4FE1\u606F\uFF08clientEmail\u3001privateKey\u3001targetAudience \u6216\u5B8C\u6574 serviceAccountJson\uFF09\u3002"
+    )
+  }),
   execute: async ({ action, query, uid, panelId, credentials }) => {
     const client = getGrafanaClient(credentials);
     switch (action) {
@@ -1496,6 +1445,7 @@ const grafanaTool = {
   }
 };
 const grafanaMcpAgent = new Agent({
+  id: "grafana-mcp-agent",
   name: "grafana-mcp-agent",
   instructions: "\u5C01\u88C5 Grafana MCP \u80FD\u529B\uFF0C\u80FD\u591F\u901A\u8FC7\u8C37\u6B4C IAP \u81EA\u52A8\u5B8C\u6210\u767B\u5F55\u5E76\u68C0\u7D22\u5173\u952E\u76D1\u63A7\u4FE1\u606F\u3002",
   system: "\u4F60\u662F\u4E00\u540D\u719F\u6089 Grafana \u7684\u5185\u90E8\u5E73\u53F0\u52A9\u624B\uFF0C\u80FD\u591F\u57FA\u4E8E\u7ED3\u6784\u5316\u6307\u4EE4\u8C03\u7528 grafanaMcp \u5DE5\u5177\u6267\u884C\u641C\u7D22\u3001\u8BFB\u53D6\u4EEA\u8868\u76D8\u4E0E\u9762\u677F\u914D\u7F6E\u7B49\u4EFB\u52A1\u3002",
@@ -1648,60 +1598,29 @@ class SentryMcpClient {
 
 const sentryTool = {
   id: "sentryMcp",
-  name: "sentryMcp",
   description: "\u901A\u8FC7 Sentry MCP \u83B7\u53D6 Issue \u5E76\u57FA\u4E8E\u53EF\u914D\u7F6E\u679A\u4E3E\u8FDB\u884C\u6253\u6807\uFF0C\u53EF\u5BF9\u9AD8\u98CE\u9669\u95EE\u9898\u89E6\u53D1 Lark/\u90AE\u4EF6\u901A\u77E5\u3002\u81EA\u52A8\u7F13\u5B58\u767B\u5F55\u6001\u4EE5\u51CF\u5C11\u91CD\u590D\u8BA4\u8BC1\u3002",
-  parameters: {
-    type: "object",
-    properties: {
-      action: {
-        type: "string",
-        enum: ["fetchTopIssues", "notifyHighRisk"],
-        description: "\u8981\u6267\u884C\u7684\u52A8\u4F5C\uFF1A\u83B7\u53D6 issue \u6216\u53D1\u9001\u544A\u8B66\u3002"
-      },
-      limit: {
-        type: "number",
-        description: "\u83B7\u53D6 issue \u7684\u6570\u91CF\uFF0C\u9ED8\u8BA4 20\u3002"
-      },
-      credentials: {
-        type: "object",
-        description: "\u53EF\u9009\u7684 Sentry MCP \u51ED\u636E\u8986\u76D6\u9879\uFF0C\u652F\u6301\u81EA\u5B9A\u4E49 baseUrl\u3001token\u3001\u7EC4\u7EC7\u548C\u9879\u76EE\u3002",
-        properties: {
-          baseUrl: { type: "string" },
-          token: { type: "string" },
-          organizationSlug: { type: "string" },
-          projectSlug: { type: "string" },
-          defaultLimit: { type: "number" }
-        }
-      },
-      taxonomyOverrides: {
-        type: "object",
-        description: "\u53EF\u9009\u7684\u679A\u4E3E\u503C\u8BCD\u5178\u8986\u76D6\u9879\uFF0C\u7528\u4E8E\u98CE\u9669\u3001\u95EE\u9898\u7C7B\u578B\u3001\u9891\u7387\u5206\u6863\u3002"
-      },
-      annotations: {
-        type: "object",
-        description: "\u6309 issue id \u63D0\u4EA4\u7684\u6253\u6807\u7ED3\u679C\uFF08riskId\u3001issueTypeId\u3001frequencyBandId \u7B49\uFF09\u3002",
-        additionalProperties: { type: "object" }
-      },
-      issues: {
-        type: "array",
-        description: "\u5F85\u901A\u77E5\u7684\u5DF2\u6253\u6807 issue \u5217\u8868\uFF0C\u5F53 action=notifyHighRisk \u65F6\u5FC5\u586B\u3002",
-        items: { type: "object" }
-      },
-      notificationConfig: {
-        type: "object",
-        description: "\u544A\u8B66\u901A\u77E5\u914D\u7F6E\uFF0C\u5305\u62EC Lark webhook \u548C\u90AE\u4EF6\u6536\u4EF6\u4EBA\u7B49\u3002",
-        properties: {
-          larkWebhook: { type: "string" },
-          larkTemplate: { type: "string" },
-          emailRecipients: { type: "array", items: { type: "string" } },
-          emailFrom: { type: "string" },
-          emailSubjectPrefix: { type: "string" },
-          groupBy: { type: "string", enum: ["risk", "issueType"] }
-        }
-      }
-    },
-    required: ["action"]
-  },
+  inputSchema: z.object({
+    action: z.enum(["fetchTopIssues", "notifyHighRisk"]).describe("\u8981\u6267\u884C\u7684\u52A8\u4F5C\uFF1A\u83B7\u53D6 issue \u6216\u53D1\u9001\u544A\u8B66\u3002"),
+    limit: z.number().optional().describe("\u83B7\u53D6 issue \u7684\u6570\u91CF\uFF0C\u9ED8\u8BA4 20\u3002"),
+    credentials: z.object({
+      baseUrl: z.string().optional(),
+      token: z.string().optional(),
+      organizationSlug: z.string().optional(),
+      projectSlug: z.string().optional(),
+      defaultLimit: z.number().optional()
+    }).optional().describe("\u53EF\u9009\u7684 Sentry MCP \u51ED\u636E\u8986\u76D6\u9879\uFF0C\u652F\u6301\u81EA\u5B9A\u4E49 baseUrl\u3001token\u3001\u7EC4\u7EC7\u548C\u9879\u76EE\u3002"),
+    taxonomyOverrides: z.record(z.any()).optional().describe("\u53EF\u9009\u7684\u679A\u4E3E\u503C\u8BCD\u5178\u8986\u76D6\u9879\uFF0C\u7528\u4E8E\u98CE\u9669\u3001\u95EE\u9898\u7C7B\u578B\u3001\u9891\u7387\u5206\u6863\u3002"),
+    annotations: z.record(z.any()).optional().describe("\u6309 issue id \u63D0\u4EA4\u7684\u6253\u6807\u7ED3\u679C\uFF08riskId\u3001issueTypeId\u3001frequencyBandId \u7B49\uFF09\u3002"),
+    issues: z.array(z.any()).optional().describe("\u5F85\u901A\u77E5\u7684\u5DF2\u6253\u6807 issue \u5217\u8868\uFF0C\u5F53 action=notifyHighRisk \u65F6\u5FC5\u586B\u3002"),
+    notificationConfig: z.object({
+      larkWebhook: z.string().optional(),
+      larkTemplate: z.string().optional(),
+      emailRecipients: z.array(z.string()).optional(),
+      emailFrom: z.string().optional(),
+      emailSubjectPrefix: z.string().optional(),
+      groupBy: z.enum(["risk", "issueType"]).optional()
+    }).optional().describe("\u544A\u8B66\u901A\u77E5\u914D\u7F6E\uFF0C\u5305\u62EC Lark webhook \u548C\u90AE\u4EF6\u6536\u4EF6\u4EBA\u7B49\u3002")
+  }),
   execute: async ({
     action,
     limit,
@@ -1798,6 +1717,7 @@ ${emailBody}`
   }
 };
 const sentryMcpAgent = new Agent({
+  id: "sentry-mcp-agent",
   name: "sentry-mcp-agent",
   instructions: "\u4F60\u662F Sentry Issue \u7684\u5206\u6790\u4E0E\u9884\u8B66\u4E13\u5BB6\u3002\u901A\u8FC7 Sentry MCP \u62C9\u53D6\u6700\u65B0\u95EE\u9898\uFF0C\u4F18\u5148\u68C0\u67E5 top20\uFF0C\u5E76\u6309\u7167\u98CE\u9669\u3001\u95EE\u9898\u7C7B\u578B\u3001\u9891\u7387\u7B49\u679A\u4E3E\u8BCD\u5178\u5B8C\u6210\u6253\u6807\u3002\u4FDD\u6301\u767B\u5F55\u6001\uFF0C\u786E\u4FDD\u6388\u6743\u6709\u6548\uFF1B\u9AD8\u98CE\u9669\u95EE\u9898\u8981\u51C6\u5907 Lark \u548C\u90AE\u4EF6\u901A\u77E5\u6458\u8981\u3002\u6240\u6709\u679A\u4E3E\u503C\u987B\u4F7F\u7528\u63D0\u4F9B\u7684\u8BCD\u5178\u6216\u8986\u76D6\u9879\uFF0C\u5FC5\u8981\u65F6\u7ED9\u51FA\u8865\u5145\u8BF4\u660E\u4E0E\u4E0B\u4E00\u6B65\u884C\u52A8\u5EFA\u8BAE\u3002",
   system: "1) \u9ED8\u8BA4\u83B7\u53D6\u5E76\u5206\u6790\u6700\u8FD1\u7684\u524D 20 \u6761 issue\uFF1B2) \u8F93\u51FA\u65F6\u8981\u5217\u51FA\u98CE\u9669\u7B49\u7EA7\u3001\u95EE\u9898\u7C7B\u578B\u3001\u9891\u7387\u5206\u6863\uFF0C\u5E76\u8BF4\u660E\u5224\u5B9A\u4F9D\u636E\uFF1B3) \u5BF9\u9AD8\u98CE\u9669\u95EE\u9898\u7ED9\u51FA\u901A\u77E5\u6458\u8981\u548C\u8D23\u4EFB\u4EBA\u5EFA\u8BAE\uFF1B4) \u53EF\u4EE5\u6309\u9700\u8BF7\u6C42\u81EA\u5B9A\u4E49\u679A\u4E3E\u8BCD\u5178\u6216\u544A\u8B66\u914D\u7F6E\u3002",
@@ -1805,17 +1725,17 @@ const sentryMcpAgent = new Agent({
   tools: { sentryMcp: sentryTool }
 });
 
-const registeredAgents = [
-  echoAgent,
-  summarizerAgent,
-  promptLibraryAgent,
-  testPromptAgent,
-  codeReviewAgent,
-  codeGuidelinesMcp,
-  gitMcpAgent,
-  grafanaMcpAgent,
-  sentryMcpAgent
-];
+const registeredAgents = {
+  "echo-agent": echoAgent,
+  "summarizer-agent": summarizerAgent,
+  "prompt-library-agent": promptLibraryAgent,
+  "test-prompt-agent": testPromptAgent,
+  "code-review-agent": codeReviewAgent,
+  "code-guidelines-mcp": codeGuidelinesMcp,
+  "git-mcp-agent": gitMcpAgent,
+  "grafana-mcp-agent": grafanaMcpAgent,
+  "sentry-mcp-agent": sentryMcpAgent
+};
 
 const mastra = new Mastra({
   agents: registeredAgents

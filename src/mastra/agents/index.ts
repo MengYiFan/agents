@@ -1,4 +1,4 @@
-import type { Agent } from "@mastra/core";
+import type { Agent } from "@mastra/core/agent";
 import { echoAgent } from "./examples/echoAgent.js";
 import { summarizerAgent } from "./examples/summarizerAgent.js";
 import { promptLibraryAgent } from "./examples/promptLibraryAgent.js";
@@ -9,14 +9,14 @@ import { gitMcpAgent } from "./integrations/gitMcpAgent.js";
 import { grafanaMcpAgent } from "./integrations/grafanaMcpAgent.js";
 import { sentryMcpAgent } from "./integrations/sentryMcpAgent.js";
 
-export const registeredAgents: Agent[] = [
-  echoAgent,
-  summarizerAgent,
-  promptLibraryAgent,
-  testPromptAgent,
-  codeReviewAgent,
-  codeGuidelinesMcp,
-  gitMcpAgent,
-  grafanaMcpAgent,
-  sentryMcpAgent,
-];
+export const registeredAgents: Record<string, Agent> = {
+  "echo-agent": echoAgent,
+  "summarizer-agent": summarizerAgent,
+  "prompt-library-agent": promptLibraryAgent,
+  "test-prompt-agent": testPromptAgent,
+  "code-review-agent": codeReviewAgent,
+  "code-guidelines-mcp": codeGuidelinesMcp,
+  "git-mcp-agent": gitMcpAgent,
+  "grafana-mcp-agent": grafanaMcpAgent,
+  "sentry-mcp-agent": sentryMcpAgent,
+};

@@ -1,4 +1,5 @@
 import { Agent } from "@mastra/core/agent";
+import { z } from "zod";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import { promises as fs } from "fs";
@@ -578,37 +579,22 @@ const evaluateBranchCompliance = (
 
 const gitWorkflowTool = {
   id: "gitWorkflow",
-  name: "gitWorkflow",
   description:
     "根据结构化指令执行 Git 工作流操作（如状态查询、拉取、提交、合并、推送等），并提供后续提醒与推荐指令。",
-  parameters: {
-    type: "object",
-    properties: {
-      action: {
-        type: "string",
-        enum: [
-          "status",
-          "pull",
-          "commit",
-          "merge",
-          "checkout",
-          "createBranch",
-          "push",
-          "lifecycleGuide",
-        ],
-        description: "要执行的 Git 操作。",
-      },
-      options: {
-        type: "object",
-        description: "针对指定操作的额外参数。",
-      },
-      preCommitReview: {
-        type: "object",
-        description: "提交前的代码审查配置。仅在 action=commit 时生效。",
-      },
-    },
-    required: ["action"],
-  },
+  inputSchema: z.object({
+    action: z
+      .enum(["status", "pull", "commit", "merge", "checkout", "createBranch", "push", "lifecycleGuide"])
+      .describe("要执行的 Git 操作。"),
+    options: z.record(z.any()).optional().describe("针对指定操作的额外参数。"),
+    preCommitReview: z
+      .object({
+        enabled: z.boolean().optional(),
+        reviewPrompt: z.string().optional(),
+        approval: z.boolean().optional(),
+      })
+      .optional()
+      .describe("提交前的代码审查配置。仅在 action=commit 时生效。"),
+  }),
   execute: async ({ action, options, preCommitReview }: GitOperationInput): Promise<GitOperationResult> => {
     const executedCommands: string[] = [];
     let output = "";
@@ -833,6 +819,7 @@ const gitWorkflowTool = {
 import { openaiModel } from "../../models.js";
 
 export const gitMcpAgent = new Agent({
+  id: "git-mcp-agent",
   name: "git-mcp-agent",
   instructions:
     "你是 Git 工作流专家。根据用户意图调用 gitWorkflow 工具执行操作，并基于返回的生命周期指引（lifecycleGuide）提供下一步建议。对于 status/diff 结果，需简要分析变更点；对于 commit/push 操作，需确认是否符合分支规范。",

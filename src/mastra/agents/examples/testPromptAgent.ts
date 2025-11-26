@@ -3,6 +3,7 @@ import { Agent } from "@mastra/core/agent";
 import { geminiModel } from "../../models.js";
 
 export const testPromptAgent = new Agent({
+  id: "test-prompt-agent",
   name: "test-prompt-agent",
   instructions:
     "本地 Copilot 测试代理，验证在调用时能够返回稳定且可预测的响应。用户输入 Hello 时必须固定回复 Wooooo~。",

@@ -1,4 +1,5 @@
 import { Agent } from "@mastra/core/agent";
+import { z } from "zod";
 import {
   SentryMcpClient,
   type SentryAnnotatedIssue,
@@ -58,61 +59,41 @@ type SentryAgentResult = FetchIssuesPayload | NotificationResultPayload;
 
 const sentryTool = {
   id: "sentryMcp",
-  name: "sentryMcp",
   description:
     "通过 Sentry MCP 获取 Issue 并基于可配置枚举进行打标，可对高风险问题触发 Lark/邮件通知。自动缓存登录态以减少重复认证。",
-  parameters: {
-    type: "object",
-    properties: {
-      action: {
-        type: "string",
-        enum: ["fetchTopIssues", "notifyHighRisk"],
-        description: "要执行的动作：获取 issue 或发送告警。",
-      },
-      limit: {
-        type: "number",
-        description: "获取 issue 的数量，默认 20。",
-      },
-      credentials: {
-        type: "object",
-        description: "可选的 Sentry MCP 凭据覆盖项，支持自定义 baseUrl、token、组织和项目。",
-        properties: {
-          baseUrl: { type: "string" },
-          token: { type: "string" },
-          organizationSlug: { type: "string" },
-          projectSlug: { type: "string" },
-          defaultLimit: { type: "number" },
-        },
-      },
-      taxonomyOverrides: {
-        type: "object",
-        description: "可选的枚举值词典覆盖项，用于风险、问题类型、频率分档。",
-      },
-      annotations: {
-        type: "object",
-        description: "按 issue id 提交的打标结果（riskId、issueTypeId、frequencyBandId 等）。",
-        additionalProperties: { type: "object" },
-      },
-      issues: {
-        type: "array",
-        description: "待通知的已打标 issue 列表，当 action=notifyHighRisk 时必填。",
-        items: { type: "object" },
-      },
-      notificationConfig: {
-        type: "object",
-        description: "告警通知配置，包括 Lark webhook 和邮件收件人等。",
-        properties: {
-          larkWebhook: { type: "string" },
-          larkTemplate: { type: "string" },
-          emailRecipients: { type: "array", items: { type: "string" } },
-          emailFrom: { type: "string" },
-          emailSubjectPrefix: { type: "string" },
-          groupBy: { type: "string", enum: ["risk", "issueType"] },
-        },
-      },
-    },
-    required: ["action"],
-  },
+  inputSchema: z.object({
+    action: z
+      .enum(["fetchTopIssues", "notifyHighRisk"])
+      .describe("要执行的动作：获取 issue 或发送告警。"),
+    limit: z.number().optional().describe("获取 issue 的数量，默认 20。"),
+    credentials: z
+      .object({
+        baseUrl: z.string().optional(),
+        token: z.string().optional(),
+        organizationSlug: z.string().optional(),
+        projectSlug: z.string().optional(),
+        defaultLimit: z.number().optional(),
+      })
+      .optional()
+      .describe("可选的 Sentry MCP 凭据覆盖项，支持自定义 baseUrl、token、组织和项目。"),
+    taxonomyOverrides: z.record(z.any()).optional().describe("可选的枚举值词典覆盖项，用于风险、问题类型、频率分档。"),
+    annotations: z
+      .record(z.any())
+      .optional()
+      .describe("按 issue id 提交的打标结果（riskId、issueTypeId、frequencyBandId 等）。"),
+    issues: z.array(z.any()).optional().describe("待通知的已打标 issue 列表，当 action=notifyHighRisk 时必填。"),
+    notificationConfig: z
+      .object({
+        larkWebhook: z.string().optional(),
+        larkTemplate: z.string().optional(),
+        emailRecipients: z.array(z.string()).optional(),
+        emailFrom: z.string().optional(),
+        emailSubjectPrefix: z.string().optional(),
+        groupBy: z.enum(["risk", "issueType"]).optional(),
+      })
+      .optional()
+      .describe("告警通知配置，包括 Lark webhook 和邮件收件人等。"),
+  }),
   execute: async ({
     action,
     limit,
@@ -229,6 +210,7 @@ const sentryTool = {
 import { openaiModel } from "../../models.js";
 
 export const sentryMcpAgent = new Agent({
+  id: "sentry-mcp-agent",
   name: "sentry-mcp-agent",
   instructions:
     "你是 Sentry Issue 的分析与预警专家。通过 Sentry MCP 拉取最新问题，优先检查 top20，并按照风险、问题类型、频率等枚举词典完成打标。保持登录态，确保授权有效；高风险问题要准备 Lark 和邮件通知摘要。所有枚举值须使用提供的词典或覆盖项，必要时给出补充说明与下一步行动建议。",

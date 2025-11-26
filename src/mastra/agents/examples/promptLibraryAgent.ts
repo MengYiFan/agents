@@ -1,4 +1,5 @@
 import { Agent } from "@mastra/core/agent";
+import { z } from "zod";
 import { promises as fs } from "fs";
 import path from "path";
 
@@ -80,19 +81,11 @@ const readPromptFromFile = async (promptName: string): Promise<PromptDefinition>
 
 const loadPromptTool = {
   id: "loadPrompt",
-  name: "loadPrompt",
   description:
     "读取 prompts 目录中的 Markdown 提示定义，并返回解析后的注释元数据和 Markdown 内容。",
-  parameters: {
-    type: "object",
-    properties: {
-      promptName: {
-        type: "string",
-        description: "要加载的提示文件名称（不包含 .md 后缀）。",
-      },
-    },
-    required: ["promptName"],
-  },
+  inputSchema: z.object({
+    promptName: z.string().describe("要加载的提示文件名称（不包含 .md 后缀）。"),
+  }),
   execute: async ({ promptName }: LoadPromptToolInput): Promise<PromptDefinition> => {
     try {
       return await readPromptFromFile(promptName);
@@ -109,6 +102,7 @@ const loadPromptTool = {
 import { openaiModel } from "../../models.js";
 
 export const promptLibraryAgent = new Agent({
+  id: "prompt-library-agent",
   name: "prompt-library-agent",
   instructions:
     "根据用户提供的 prompt 名称，从 prompts 目录加载对应的 Markdown，并提供结构化的提示定义。",

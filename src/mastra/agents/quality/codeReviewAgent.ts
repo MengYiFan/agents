@@ -43,6 +43,7 @@ const combinedInstructions = [
 import { deepseekModel } from "../../models.js";
 
 export const codeReviewAgent = new Agent({
+  id: "code-review-agent",
   name: "code-review-agent",
   instructions: combinedInstructions,
   system: combinedInstructions,

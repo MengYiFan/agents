@@ -1,4 +1,5 @@
 import { Agent } from "@mastra/core/agent";
+import { z } from "zod";
 import { promises as fs } from "fs";
 import path from "path";
 
@@ -232,22 +233,15 @@ interface InjectRulesToolResult {
 
 const injectCodeRulesDocumentTool = {
   id: "injectCodeRulesDocument",
-  name: "injectCodeRulesDocument",
   description:
     "在当前项目根目录生成或更新 .rules 代码规范说明文档，可选择覆盖已有内容。",
-  parameters: {
-    type: "object",
-    properties: {
-      overwrite: {
-        type: "boolean",
-        description: "是否覆盖已存在的 .rules 文件，默认不覆盖。",
-      },
-      customContent: {
-        type: "string",
-        description: "可选的自定义文档内容，不提供时使用默认规范模板。",
-      },
-    },
-  },
+  inputSchema: z.object({
+    overwrite: z.boolean().optional().describe("是否覆盖已存在的 .rules 文件，默认不覆盖。"),
+    customContent: z
+      .string()
+      .optional()
+      .describe("可选的自定义文档内容，不提供时使用默认规范模板。"),
+  }),
   execute: async (
     input: InjectRulesToolInput = {},
   ): Promise<InjectRulesToolResult> => {
@@ -300,6 +294,7 @@ const injectCodeRulesDocumentTool = {
 import { openaiModel } from "../../models.js";
 
 export const codeGuidelinesMcp = new Agent({
+  id: "code-guidelines-mcp",
   name: "code-guidelines-mcp",
   instructions:
     "当开发者需要注入或更新项目的代码规范时，调用 injectCodeRulesDocument 工具生成 .rules 文件。",
