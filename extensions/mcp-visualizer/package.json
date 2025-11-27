@@ -15,8 +15,17 @@
   ],
   "main": "dist/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "mcp-visualizer-container",
+          "title": "MCP 可视化",
+          "icon": "assets/activitybar.svg"
+        }
+      ]
+    },
     "views": {
-      "explorer": [
+      "mcp-visualizer-container": [
         {
           "id": "mcpVisualizer.view",
           "name": "MCP 可视化"
