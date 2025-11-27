@@ -816,7 +816,7 @@ const gitWorkflowTool = {
   },
 };
 
-import { openaiModel } from "../../models.js";
+import { geminiModel } from "../../models.js";
 
 export const gitMcpAgent = new Agent({
   id: "git-mcp-agent",
@@ -825,6 +825,6 @@ export const gitMcpAgent = new Agent({
     "你是 Git 工作流专家。根据用户意图调用 gitWorkflow 工具执行操作，并基于返回的生命周期指引（lifecycleGuide）提供下一步建议。对于 status/diff 结果，需简要分析变更点；对于 commit/push 操作，需确认是否符合分支规范。",
   system:
     "1) 优先使用 gitWorkflow 执行操作；2) 每次操作后检查返回的 reminders 与 recommendedCommands；3) 遇到分支不规范时，引用 branchCompliance 的建议引导用户；4) 涉及代码审查时，提示用户关注 review 状态。",
-  model: openaiModel,
+  model: geminiModel,
   tools: { gitWorkflow: gitWorkflowTool },
 });

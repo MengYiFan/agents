@@ -213,7 +213,7 @@ const grafanaTool = {
   },
 };
 
-import { openaiModel } from "../../models.js";
+import { geminiModel } from "../../models.js";
 
 export const grafanaMcpAgent = new Agent({
   id: "grafana-mcp-agent",
@@ -221,6 +221,6 @@ export const grafanaMcpAgent = new Agent({
   instructions: "封装 Grafana MCP 能力，能够通过谷歌 IAP 自动完成登录并检索关键监控信息。",
   system:
     "你是一名熟悉 Grafana 的内部平台助手，能够基于结构化指令调用 grafanaMcp 工具执行搜索、读取仪表盘与面板配置等任务。",
-  model: openaiModel,
+  model: geminiModel,
   tools: { grafanaMcp: grafanaTool },
 });

@@ -99,7 +99,7 @@ const loadPromptTool = {
   },
 };
 
-import { openaiModel } from "../../models.js";
+import { geminiModel } from "../../models.js";
 
 export const promptLibraryAgent = new Agent({
   id: "prompt-library-agent",
@@ -108,6 +108,6 @@ export const promptLibraryAgent = new Agent({
     "根据用户提供的 prompt 名称，从 prompts 目录加载对应的 Markdown，并提供结构化的提示定义。",
   system:
     "你是一名提示库助手，可以解析 prompts 目录下的 Markdown 文件，提取注释中的元数据并返回提示内容。",
-  model: openaiModel,
+  model: geminiModel,
   tools: { loadPrompt: loadPromptTool },
 });

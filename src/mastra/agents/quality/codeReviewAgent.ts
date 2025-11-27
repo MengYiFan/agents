@@ -3,10 +3,10 @@ import { existsSync, readFileSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const currentFilename = fileURLToPath(import.meta.url);
+const currentDirname = path.dirname(currentFilename);
 // 由于质量相关代理位于 src/agents/quality，需要向上三级回到仓库根目录以便读取共享提示词与指令。
-const repoRoot = path.resolve(__dirname, "../../..");
+const repoRoot = path.resolve(currentDirname, "../../..");
 
 const loadInstructionsFile = (relativePath: string): string => {
   const fullPath = path.resolve(repoRoot, relativePath);
@@ -40,13 +40,13 @@ const combinedInstructions = [
   "在引用规范或问题时，请标明具体文件路径与行号，确保建议可操作。",
 ].join("\n\n");
 
-import { deepseekModel } from "../../models.js";
+import { geminiModel } from "../../models.js";
 
 export const codeReviewAgent = new Agent({
   id: "code-review-agent",
   name: "code-review-agent",
   instructions: combinedInstructions,
   system: combinedInstructions,
-  model: deepseekModel,
+  model: geminiModel,
   tools: {},
 });
