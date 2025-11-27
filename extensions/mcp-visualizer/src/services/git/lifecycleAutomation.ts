@@ -81,7 +81,10 @@ function getDefaultHotfixBranch(): string {
   const now = new Date();
   const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(
     now.getDate(),
-  ).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+  ).padStart(
+    2,
+    '0',
+  )}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
   return `hotfix/${timestamp}`;
 }
 
@@ -151,7 +154,11 @@ async function createReleaseBranch(workspaceRoot: string): Promise<LifecycleActi
           await runGitCommand(workspaceRoot, ['pull', 'origin', 'master'], executedCommands);
 
           progress.report({ message: `创建 ${branchName}` });
-          await runGitCommand(workspaceRoot, ['checkout', '-B', branchName, 'master'], executedCommands);
+          await runGitCommand(
+            workspaceRoot,
+            ['checkout', '-B', branchName, 'master'],
+            executedCommands,
+          );
 
           return {
             success: true,

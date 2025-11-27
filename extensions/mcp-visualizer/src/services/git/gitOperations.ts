@@ -18,7 +18,10 @@ async function runGitCommand(
   }
 }
 
-export async function checkoutBranch(workspaceRoot: string | undefined, branch: string): Promise<void> {
+export async function checkoutBranch(
+  workspaceRoot: string | undefined,
+  branch: string,
+): Promise<void> {
   if (!workspaceRoot) {
     vscode.window.showErrorMessage('请先打开一个 Git 仓库工作区。');
     return;
@@ -60,7 +63,11 @@ export async function checkoutBranch(workspaceRoot: string | undefined, branch: 
 
       if (/did not match any file\(s\) known to git|pathspec/i.test(checkoutResult.message)) {
         progress.report({ message: '未找到本地分支，尝试跟踪远程…' });
-        const trackResult = await runGitCommand(workspaceRoot, ['checkout', '--track', `origin/${targetBranch}`]);
+        const trackResult = await runGitCommand(workspaceRoot, [
+          'checkout',
+          '--track',
+          `origin/${targetBranch}`,
+        ]);
         if (trackResult.success) {
           checkoutSucceeded = true;
           return;

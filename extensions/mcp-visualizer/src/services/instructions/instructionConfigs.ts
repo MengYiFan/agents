@@ -57,7 +57,8 @@ export async function resolveProjectStandardSource(
 ): Promise<ProjectStandardSource | undefined> {
   const configuration = vscode.workspace.getConfiguration('mcpVisualizer');
   const preferredId = configuration.get<string>('instructions.projectStandardId');
-  const overrideMap = configuration.get<Record<string, unknown>>('instructions.projectStandardMap') ?? {};
+  const overrideMap =
+    configuration.get<Record<string, unknown>>('instructions.projectStandardMap') ?? {};
 
   const sources = new Map<string, ProjectStandardSource>();
 
@@ -71,7 +72,12 @@ export async function resolveProjectStandardSource(
   }
 
   for (const [id, rawValue] of Object.entries(overrideMap)) {
-    const value = rawValue as { templatePath?: string; content?: string; displayName?: string; targetFileName?: string };
+    const value = rawValue as {
+      templatePath?: string;
+      content?: string;
+      displayName?: string;
+      targetFileName?: string;
+    };
     if (!value.templatePath && !value.content) {
       continue;
     }
@@ -111,9 +117,7 @@ export async function resolveProjectStandardSource(
   return first;
 }
 
-export async function resolveContext7Presets(
-  extensionUri: vscode.Uri,
-): Promise<Context7Preset[]> {
+export async function resolveContext7Presets(extensionUri: vscode.Uri): Promise<Context7Preset[]> {
   const configuration = vscode.workspace.getConfiguration('mcpVisualizer');
   const overrides = configuration.get<unknown[]>('instructions.context7Prompts') ?? [];
 

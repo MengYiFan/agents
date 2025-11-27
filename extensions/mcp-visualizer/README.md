@@ -14,6 +14,8 @@
 ### MCP 功能列表
 
 - 默认搜索路径覆盖项目根目录与 `docs/**/README.md`、`packages/**/README.md` 等常见文档位置。
+- 默认搜索路径覆盖项目根目录与 `docs/**/README.md`、`packages/**/README.md` 等常见文档位置，可通过配置项
+  `mcpVisualizer.docSearchPaths` 追加或调整（默认包含 docs/extensions/prompts/packages/apps/services/mcp/src）。
 - 通过 Node.js `fs/promises` 模块读取 Markdown 内容，并使用 `marked` 渲染成 HTML。
 - 文档加载后会缓存到 Webview，切换条目时无需重新读取磁盘，提升切换速度。
 - 提供命令 **“MCP 可视化: 刷新文档索引”**，可在新增/删除 README 后立即刷新列表。
@@ -24,6 +26,7 @@
 - 每个阶段节点可点击，右侧面板会展示该阶段需要完成的动作及建议使用的目标分支（如 `feature/*`、`release/*`、`hotfix/*` 等）。
 - 分支节点支持直接执行 `git checkout <branch>`。若分支不存在，扩展会提示并引导创建。
 - 生命周期状态切换通过消息通道反馈给 Webview，确保图示状态与当前阶段一致。
+- 侧边栏顶部新增界面语言切换按钮，可在中英文之间一键切换，并保持主题与视图状态。
 
 ---
 

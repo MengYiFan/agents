@@ -14,6 +14,7 @@
   const stageCommandsList = document.getElementById('stageCommands');
   const stageCommandsEmpty = document.getElementById('stageCommandsEmpty');
   const authBadges = document.getElementById('authBadges');
+  const uiLocaleSwitcher = document.getElementById('uiLocaleSwitcher');
 
   let docs = [];
   let currentDocId = persistedState.selectedDocId || null;
@@ -24,6 +25,7 @@
   const stageInfoCache = persistedState.stageInfoCache || {};
   let uiText = persistedState.uiText || null;
   let currentLocale = persistedState.locale || 'zh-CN';
+  let availableLocales = [];
 
   function updateState(patch) {
     persistedState = { ...persistedState, ...patch };
@@ -98,6 +100,17 @@
     if (stageCommandsList) {
       stageCommandsList.classList.add('hidden');
     }
+
+    updateLocaleButtons();
+  }
+
+  function updateLocaleButtons() {
+    if (!uiLocaleSwitcher) {
+      return;
+    }
+    Array.from(uiLocaleSwitcher.querySelectorAll('.locale-button')).forEach((button) => {
+      button.classList.toggle('active', button.dataset.locale === currentLocale);
+    });
   }
 
   function applyTheme(theme) {
@@ -283,6 +296,29 @@
 
     attachStageListeners();
     attachBranchListeners();
+  }
+
+  function renderUiLocaleSwitcher(locales) {
+    if (!uiLocaleSwitcher) {
+      return;
+    }
+    availableLocales = Array.isArray(locales) && locales.length > 0 ? locales : ['zh-CN', 'en-US'];
+    uiLocaleSwitcher.innerHTML = '';
+    availableLocales.forEach((locale) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'locale-button';
+      button.dataset.locale = locale;
+      button.textContent = locale === 'zh-CN' ? '中文' : 'English';
+      button.classList.toggle('active', locale === currentLocale);
+      button.addEventListener('click', () => {
+        if (locale === currentLocale) {
+          return;
+        }
+        vscode.postMessage({ type: 'switchLocale', language: locale });
+      });
+      uiLocaleSwitcher.appendChild(button);
+    });
   }
 
   function createLinkInput(step) {
@@ -546,6 +582,7 @@
       case 'initialData':
         applyTranslations(message.uiText, message.locale);
         applyTheme(message.theme);
+        renderUiLocaleSwitcher(message.availableLocales);
         renderDocList(message.docs || []);
         renderInstructions(message.instructions || []);
         renderWorkflow(message.workflow || []);
@@ -566,6 +603,11 @@
           } else if (docs[0]) {
             selectDoc(docs[0].id, docs[0].defaultLanguage);
           }
+        }
+        if (message.initialStage) {
+          updateStageInfo(message.initialStage);
+        } else if (message.initialStageId && stageInfoCache[message.initialStageId]) {
+          updateStageInfo(stageInfoCache[message.initialStageId]);
         }
         break;
       case 'docContent':
