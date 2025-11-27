@@ -25,7 +25,9 @@ export function getAuthorizationStatuses(
     name: provider.name,
     authorized: Boolean(overrides[provider.id]),
     iconPath: webview
-      .asWebviewUri(vscode.Uri.joinPath(extensionUri, 'assets', 'icons', 'platforms', provider.iconFile))
+      .asWebviewUri(
+        vscode.Uri.joinPath(extensionUri, 'assets', 'icons', 'platforms', provider.iconFile),
+      )
       .toString(),
   }));
 }

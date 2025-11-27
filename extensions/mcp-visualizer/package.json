@@ -28,7 +28,8 @@
       "mcp-visualizer-container": [
         {
           "id": "mcpVisualizer.view",
-          "name": "MCP 可视化"
+          "name": "MCP 可视化",
+          "type": "webview"
         }
       ]
     },
@@ -37,7 +38,52 @@
         "command": "mcpVisualizer.refresh",
         "title": "刷新 MCP 可视化"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "MCP Visualizer",
+      "properties": {
+        "mcpVisualizer.docSearchPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "docs",
+            "extensions",
+            "prompts",
+            "packages",
+            "apps",
+            "services",
+            "mcp",
+            "src"
+          ],
+          "markdownDescription": "用于扫描 MCP README 的相对目录列表，默认覆盖 docs/extensions/prompts/packages/apps/services/mcp/src。"
+        },
+        "mcpVisualizer.authorizations": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "平台鉴权状态开关，键为平台标识（如 lark、google、figma），值为布尔值。"
+        },
+        "mcpVisualizer.instructions.projectStandardId": {
+          "type": "string",
+          "default": "vue2_not_ts",
+          "markdownDescription": "默认注入的项目代码规范模板 ID，可结合 projectStandardMap 自定义映射。"
+        },
+        "mcpVisualizer.instructions.projectStandardMap": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "项目代码规范模板映射，键为项目 ID，值可指定 templatePath/content/targetFileName/displayName。"
+        },
+        "mcpVisualizer.instructions.context7Prompts": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "default": [],
+          "markdownDescription": "扩展的 context7 prompt 列表，支持通过 packageName/versionPattern/templatePath/content 定制。"
+        }
+      }
+    }
   },
   "scripts": {
     "compile": "tsc -p ./",

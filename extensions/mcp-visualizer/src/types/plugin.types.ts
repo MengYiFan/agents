@@ -14,9 +14,7 @@ export interface McpDocEntry {
   defaultLanguage: SupportedLanguage;
 }
 
-export type LifecycleActionId =
-  | 'testing.createReleaseBranch'
-  | 'operation.prepareHotfixBranch';
+export type LifecycleActionId = 'testing.createReleaseBranch' | 'operation.prepareHotfixBranch';
 
 export interface StageAction {
   id: LifecycleActionId;

@@ -19,8 +19,12 @@ export function getWebviewHtml(
   uiText: UiText,
   locale: SupportedLanguage,
 ): string {
-  const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'assets', 'styles', 'main.css'));
-  const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'assets', 'scripts', 'main.js'));
+  const styleUri = webview.asWebviewUri(
+    vscode.Uri.joinPath(extensionUri, 'assets', 'styles', 'main.css'),
+  );
+  const scriptUri = webview.asWebviewUri(
+    vscode.Uri.joinPath(extensionUri, 'assets', 'scripts', 'main.js'),
+  );
   const nonce = getNonce();
   const csp = `default-src 'none'; style-src ${webview.cspSource}; img-src ${webview.cspSource} https: data:; script-src 'nonce-${nonce}'`;
 
@@ -39,7 +43,10 @@ export function getWebviewHtml(
         <h1 data-i18n="header.title">${uiText.header.title}</h1>
         <p data-i18n="header.subtitle">${uiText.header.subtitle}</p>
       </div>
-      <div class="auth-badges" id="authBadges"></div>
+      <div class="view-actions">
+        <div class="locale-switcher" id="uiLocaleSwitcher"></div>
+        <div class="auth-badges" id="authBadges"></div>
+      </div>
     </header>
     <div class="tab-container">
       <div class="tab-header">

@@ -3,10 +3,7 @@ import { promises as fs } from 'fs';
 import * as vscode from 'vscode';
 import type { InstructionActionId } from '../../types';
 import { getWorkspaceRoot } from '../../shared/workspace/workspaceRoot';
-import {
-  resolveContext7Presets,
-  resolveProjectStandardSource,
-} from './instructionConfigs';
+import { resolveContext7Presets, resolveProjectStandardSource } from './instructionConfigs';
 
 export async function executeInstructionAction(
   context: vscode.ExtensionContext,
@@ -43,7 +40,9 @@ async function injectProjectStandard(context: vscode.ExtensionContext): Promise<
     const targetPath = path.join(promptsDir, source.targetFileName);
     const content = await source.loadContent();
     await fs.writeFile(targetPath, content, 'utf-8');
-    vscode.window.showInformationMessage(`已注入代码规范：${path.relative(workspaceRoot, targetPath)}`);
+    vscode.window.showInformationMessage(
+      `已注入代码规范：${path.relative(workspaceRoot, targetPath)}`,
+    );
   } catch (error) {
     vscode.window.showErrorMessage(`注入代码规范失败：${(error as Error).message}`);
   }
@@ -129,7 +128,9 @@ async function updateContext7Prompts(context: vscode.ExtensionContext): Promise<
   if (createdFiles.length === 0) {
     vscode.window.showWarningMessage('未匹配到任何 context7 prompt 模板。');
   } else {
-    vscode.window.showInformationMessage(`已生成 ${createdFiles.length} 个 context7 prompt：${createdFiles.join(', ')}`);
+    vscode.window.showInformationMessage(
+      `已生成 ${createdFiles.length} 个 context7 prompt：${createdFiles.join(', ')}`,
+    );
   }
 }
 

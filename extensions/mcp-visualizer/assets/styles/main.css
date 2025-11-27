@@ -37,6 +37,33 @@ body {
   font-size: 12px;
 }
 
+.view-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.locale-switcher {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.locale-button {
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--vscode-editorWidget-border);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.locale-button.active {
+  background: var(--vscode-textLink-foreground);
+  color: var(--vscode-editor-selectionForeground);
+  border-color: var(--vscode-textLink-foreground);
+}
+
 .auth-badges {
   display: flex;
   gap: 12px;
@@ -227,6 +254,31 @@ body {
   border: 1px solid var(--vscode-editorWidget-border);
   border-radius: 8px;
   padding: 12px 14px;
+  line-height: 1.6;
+}
+
+.mcp-content h1,
+.mcp-content h2,
+.mcp-content h3 {
+  margin-top: 0.6em;
+  margin-bottom: 0.3em;
+}
+
+.mcp-content p {
+  margin: 0.4em 0;
+}
+
+.mcp-content code {
+  background: var(--vscode-editorHoverWidget-background);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+.mcp-content pre {
+  background: var(--vscode-editorHoverWidget-background);
+  padding: 10px;
+  border-radius: 8px;
+  overflow: auto;
 }
 
 .instruction-list {

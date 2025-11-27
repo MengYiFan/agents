@@ -14,10 +14,30 @@ const LANGUAGE_ORDER: Record<SupportedLanguage, number> = {
   'en-US': 1,
 };
 
-const DOC_DIRECTORIES = ['docs', 'extensions', 'prompts'];
-const IGNORED_DIRECTORIES = new Set(['node_modules', '.git', 'dist', 'out', '.turbo', '.vscode', '.idea']);
+export const DEFAULT_DOC_DIRECTORIES = [
+  'docs',
+  'extensions',
+  'prompts',
+  'packages',
+  'apps',
+  'services',
+  'mcp',
+  'src',
+];
+const IGNORED_DIRECTORIES = new Set([
+  'node_modules',
+  '.git',
+  'dist',
+  'out',
+  '.turbo',
+  '.vscode',
+  '.idea',
+]);
 
-export async function collectDocs(workspaceRoot?: string): Promise<McpDocEntry[]> {
+export async function collectDocs(
+  workspaceRoot?: string,
+  searchPaths: string[] = DEFAULT_DOC_DIRECTORIES,
+): Promise<McpDocEntry[]> {
   if (!workspaceRoot) {
     return [];
   }
@@ -25,7 +45,10 @@ export async function collectDocs(workspaceRoot?: string): Promise<McpDocEntry[]
   const docEntries: McpDocEntry[] = [];
   let rootEntry: McpDocEntry | undefined;
 
-  const searchDirectories = DOC_DIRECTORIES.map((dir) => path.join(workspaceRoot, dir));
+  const uniqueSearchPaths = Array.from(new Set(searchPaths)).filter(Boolean);
+  const normalizedSearchPaths =
+    uniqueSearchPaths.length > 0 ? uniqueSearchPaths : DEFAULT_DOC_DIRECTORIES;
+  const searchDirectories = normalizedSearchPaths.map((dir) => path.join(workspaceRoot, dir));
 
   for (const directory of searchDirectories) {
     try {
@@ -43,8 +66,9 @@ export async function collectDocs(workspaceRoot?: string): Promise<McpDocEntry[]
     const rootVariants = await collectVariants(workspaceRoot);
     if (rootVariants.length > 0) {
       const preferred =
-        rootVariants.find((variant) => path.basename(variant.filePath).toLowerCase() === 'readme.md') ??
-        rootVariants[0];
+        rootVariants.find(
+          (variant) => path.basename(variant.filePath).toLowerCase() === 'readme.md',
+        ) ?? rootVariants[0];
       rootEntry = await buildDocEntry(preferred.filePath, workspaceRoot, {
         id: 'root-readme',
         title: '项目 README',
@@ -86,7 +110,9 @@ async function walkForReadme(dir: string, workspaceRoot: string): Promise<McpDoc
     .map((entry) => path.join(dir, entry.name));
 
   if (readmeFiles.length > 0) {
-    const preferred = readmeFiles.find((file) => path.basename(file).toLowerCase() === 'readme.md') ?? readmeFiles[0];
+    const preferred =
+      readmeFiles.find((file) => path.basename(file).toLowerCase() === 'readme.md') ??
+      readmeFiles[0];
     const docEntry = await buildDocEntry(preferred, workspaceRoot);
     if (docEntry) {
       result.push(docEntry);
@@ -122,7 +148,8 @@ async function buildDocEntry(
 
   const derivedId = path.relative(workspaceRoot, directory) || directory;
   const derivedTitle = path.basename(directory) || 'README';
-  const derivedDescription = overrides?.description ?? path.relative(workspaceRoot, defaultVariant.filePath);
+  const derivedDescription =
+    overrides?.description ?? path.relative(workspaceRoot, defaultVariant.filePath);
 
   return {
     id: overrides?.id ?? derivedId,

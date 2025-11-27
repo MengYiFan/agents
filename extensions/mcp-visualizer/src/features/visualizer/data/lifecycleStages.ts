@@ -32,6 +32,8 @@ export const LIFECYCLE_STAGES: LifecycleStage[] = [
       'git checkout master',
       'git pull origin master',
       'git checkout -B release/<版本号> master',
+      'git push -u origin release/<版本号>',
+      'git status --short',
     ],
     actions: [
       {
@@ -49,10 +51,7 @@ export const LIFECYCLE_STAGES: LifecycleStage[] = [
     name: '体验',
     description: '体验环境验证，确保 release 分支可用于体验。',
     recommendedBranches: ['release/<版本号>'],
-    commandHints: [
-      'git checkout release/<版本号>',
-      'git push origin release/<版本号>',
-    ],
+    commandHints: ['git checkout release/<版本号>', 'git push origin release/<版本号>'],
   },
   {
     id: 'acceptance',
@@ -63,6 +62,7 @@ export const LIFECYCLE_STAGES: LifecycleStage[] = [
       'git checkout release/<版本号>',
       'git cherry-pick <commit>',
       'git merge hotfix/<缺陷号>',
+      'git push origin release/<版本号>',
     ],
   },
   {
@@ -75,6 +75,7 @@ export const LIFECYCLE_STAGES: LifecycleStage[] = [
       'git merge --ff-only release/<版本号>',
       'git tag vX.Y.Z',
       'git push origin master --tags',
+      'git branch -d release/<版本号>',
     ],
   },
   {
@@ -86,6 +87,7 @@ export const LIFECYCLE_STAGES: LifecycleStage[] = [
       'git checkout master',
       'git checkout -b hotfix/<缺陷号>',
       'git push origin hotfix/<缺陷号>',
+      'git cherry-pick <commit> # 回滚或同步关键修复',
     ],
     actions: [
       {

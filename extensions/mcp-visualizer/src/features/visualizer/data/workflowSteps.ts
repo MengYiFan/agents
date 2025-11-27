@@ -35,7 +35,8 @@ export const WORKFLOW_STEPS: WorkflowStep[] = [
   {
     id: 'git-workflow',
     title: 'Git 管理流程',
-    description: '根据生命周期节点执行规范化的分支策略与合并流程。',
+    description:
+      '根据生命周期节点执行规范化的分支策略与合并流程，可在流程图上标记当前阶段并查看推荐分支。',
     type: 'diagram',
   },
   {

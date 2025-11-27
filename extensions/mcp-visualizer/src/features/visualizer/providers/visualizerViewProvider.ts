@@ -1,6 +1,10 @@
 import * as vscode from 'vscode';
 import { LIFECYCLE_STAGES } from '../data/lifecycleStages';
-import { collectDocs, loadDocContent } from '../../../services/docs/documentService';
+import {
+  collectDocs,
+  DEFAULT_DOC_DIRECTORIES,
+  loadDocContent,
+} from '../../../services/docs/documentService';
 import { checkoutBranch } from '../../../services/git/gitOperations';
 import { executeLifecycleAction } from '../../../services/git/lifecycleAutomation';
 import type { LifecycleStage, McpDocEntry, StageAction, SupportedLanguage } from '../../../types';
@@ -19,6 +23,7 @@ interface WebviewMessage {
     | 'openDoc'
     | 'checkoutBranch'
     | 'switchStage'
+    | 'switchLocale'
     | 'executeInstruction'
     | 'executeStageAction';
   docId?: string;
@@ -34,9 +39,13 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
 
   private docs: McpDocEntry[] = [];
 
-  private readonly locale: SupportedLanguage;
+  private locale: SupportedLanguage;
 
-  private readonly uiText: UiText;
+  private uiText: UiText;
+
+  private readonly availableLocales: SupportedLanguage[] = ['zh-CN', 'en-US'];
+
+  private currentStageId?: string;
 
   constructor(private readonly context: vscode.ExtensionContext) {
     this.locale = resolveSupportedLanguage(vscode.env.language);
@@ -53,6 +62,7 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
     this.view = webviewView;
     webviewView.webview.options = {
       enableScripts: true,
+      retainContextWhenHidden: true,
       localResourceRoots: [
         vscode.Uri.joinPath(this.context.extensionUri, 'dist'),
         vscode.Uri.joinPath(this.context.extensionUri, 'assets'),
@@ -97,9 +107,16 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
           if (message.stageId) {
             const stage = LIFECYCLE_STAGES.find((item) => item.id === message.stageId);
             if (stage) {
+              this.currentStageId = stage.id;
               this.postMessage({ type: 'stageInfo', stage });
               void this.autoRunStageActions(stage);
             }
+          }
+          break;
+        case 'switchLocale':
+          if (message.language) {
+            this.setLocale(resolveSupportedLanguage(message.language));
+            await this.sendInitialData();
           }
           break;
         case 'executeInstruction':
@@ -124,7 +141,10 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
 
   private async sendInitialData() {
     const workspaceRoot = getWorkspaceRoot();
-    this.docs = await collectDocs(workspaceRoot);
+    const searchPaths =
+      vscode.workspace.getConfiguration('mcpVisualizer').get<string[]>('docSearchPaths') ??
+      DEFAULT_DOC_DIRECTORIES;
+    this.docs = await collectDocs(workspaceRoot, searchPaths);
     const firstDoc: McpDocEntry | undefined = this.docs[0];
     const initialVariant = firstDoc
       ? this.selectVariant(firstDoc, firstDoc.defaultLanguage)
@@ -132,6 +152,10 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
     const initialContent = initialVariant ? await loadDocContent(initialVariant.filePath) : '';
 
     const webview = this.view?.webview;
+    const initialStage = this.resolveInitialStage();
+    if (initialStage?.id) {
+      this.currentStageId = initialStage.id;
+    }
 
     this.postMessage({
       type: 'initialData',
@@ -157,11 +181,12 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
         confirmMessage: item.confirmMessage,
       })),
       workflow: WORKFLOW_STEPS,
-      authorizations: webview
-        ? getAuthorizationStatuses(webview, this.context.extensionUri)
-        : [],
+      authorizations: webview ? getAuthorizationStatuses(webview, this.context.extensionUri) : [],
       locale: this.locale,
       uiText: this.uiText,
+      availableLocales: this.availableLocales,
+      initialStageId: initialStage?.id,
+      initialStage,
       theme: this.getThemeInfo(),
     });
   }
@@ -312,5 +337,15 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
     }
 
     return { kind, colorScheme };
+  }
+
+  private setLocale(language: SupportedLanguage) {
+    this.locale = language;
+    this.uiText = getUiText(language);
+  }
+
+  private resolveInitialStage(): LifecycleStage | undefined {
+    const targetId = this.currentStageId ?? LIFECYCLE_STAGES[0]?.id;
+    return LIFECYCLE_STAGES.find((item) => item.id === targetId);
   }
 }
