@@ -38,6 +38,8 @@ interface WebviewMessage {
   stageActionId?: string;
   workflowStepId?: string;
   link?: string;
+  blockId?: string;
+  data?: any;
 }
 
 export class VisualizerViewProvider implements vscode.WebviewViewProvider {
@@ -66,6 +68,19 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
       vscode.window.onDidChangeActiveColorTheme((theme) => {
         this.postMessage({ type: 'themeChanged', theme: this.getThemeInfo(theme) });
       }),
+    );
+
+    // Listen for branch changes
+    this.context.subscriptions.push(
+      this.gitService.onDidBranchChange(async () => {
+        const gitInfo = await this.gitService.getGitInfo();
+        const workflowData = this.workflowService.getWorkflowData(gitInfo.currentBranch);
+        this.postMessage({ 
+          type: 'gitInfoUpdated', 
+          gitInfo, 
+          workflow: workflowData 
+        });
+      })
     );
   }
 
@@ -148,6 +163,16 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
           if (message.branch && message.workflowStepId && message.link !== undefined) {
             await this.workflowService.saveLink(message.branch, message.workflowStepId, message.link);
             await this.sendInitialData(); // Refresh to show updated data
+          }
+          break;
+        case 'saveWorkflowStep':
+          if (message.branch && message.blockId && message.data !== undefined) {
+            await this.workflowService.saveWorkflowStep(message.branch, message.blockId, message.data);
+            // Get updated data and send back 'workflowUpdated' message
+            // const gitInfo = await this.gitService.getGitInfo(); // Unused
+            const workflowData = this.workflowService.getWorkflowData(message.branch);
+            this.postMessage({ type: 'workflowUpdated', workflow: workflowData });
+            vscode.window.showInformationMessage('Save success');
           }
           break;
         default:
@@ -266,7 +291,13 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
       return;
     }
 
-    const html = await loadDocContent(variant.filePath);
+    let html = '';
+    if (variant.content) {
+        html = variant.content;
+    } else {
+        html = await loadDocContent(variant.filePath);
+    }
+    
     this.postMessage({ type: 'docContent', id: docId, language: variant.language, html });
   }
 

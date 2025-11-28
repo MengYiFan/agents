@@ -10,12 +10,36 @@ export interface GitInfo {
 
 export class GitService {
   private workspaceRoot: string | undefined;
+  private _onDidBranchChange = new vscode.EventEmitter<void>();
+  public readonly onDidBranchChange = this._onDidBranchChange.event;
+  private watcher: vscode.FileSystemWatcher | undefined;
 
   constructor() {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (workspaceFolders && workspaceFolders.length > 0) {
       this.workspaceRoot = workspaceFolders[0].uri.fsPath;
+      this.initWatcher();
     }
+  }
+
+  private initWatcher() {
+    if (!this.workspaceRoot) return;
+    
+    // Watch .git/HEAD for branch changes
+    const pattern = new vscode.RelativePattern(this.workspaceRoot, '.git/HEAD');
+    this.watcher = vscode.workspace.createFileSystemWatcher(pattern);
+    
+    this.watcher.onDidChange(() => {
+      this._onDidBranchChange.fire();
+    });
+    this.watcher.onDidCreate(() => {
+        this._onDidBranchChange.fire();
+    });
+  }
+
+  public dispose() {
+      this.watcher?.dispose();
+      this._onDidBranchChange.dispose();
   }
 
   public async getGitInfo(): Promise<GitInfo> {
@@ -40,19 +64,12 @@ export class GitService {
     };
   }
 
-  private analyzeBranch(branch: string, userName: string): { isStandard: boolean; featureId?: string } {
-    // Standard format: {user_name}/feat/{meegle_number}***
-    // Example: tech/feat/123_description
-    
-    // If userName is empty, we can't strictly validate the prefix, but we can check the structure.
-    // Let's assume userName is required.
-    
-    if (!branch || !userName) {
-      return { isStandard: false };
-    }
   private analyzeBranch(branchName: string, userName: string): { isStandard: boolean; featureId?: string } {
     // Pattern: {user}/{type}/{id}***
     // e.g. mishzhong/feat/123-test -> user=mishzhong, type=feat, id=123
+    if (!branchName || !userName) {
+        return { isStandard: false };
+    }
     const parts = branchName.split('/');
     if (parts.length >= 3) {
       const featurePart = parts[2];
@@ -68,6 +85,10 @@ export class GitService {
     return {
       isStandard: false,
     };
+  }
+
+  private async getCurrentBranch(): Promise<string> {
+      return await this.execGit(['rev-parse', '--abbrev-ref', 'HEAD']);
   }
 
   public async createBranch(branchName: string): Promise<void> {

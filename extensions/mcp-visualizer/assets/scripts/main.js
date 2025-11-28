@@ -199,88 +199,66 @@
     const timeline = document.createElement('div');
     timeline.className = 'workflow-timeline';
 
-    data.blocks.forEach((block, index) => {
+    data.blocks.forEach((block) => {
       if (!block.isVisible) return;
-
-      const blockEl = document.createElement('div');
-      blockEl.className = `workflow-block ${block.status}`;
-      blockEl.dataset.id = block.id;
-
-      // Header
-      const header = document.createElement('div');
-      header.className = 'block-header';
-
-      const title = document.createElement('span');
-      title.className = 'block-title';
-      title.textContent = `${index + 1}. ${block.title}`;
-      if (block.required) title.classList.add('required');
-
-      const statusBadge = document.createElement('span');
-      statusBadge.className = `status-badge ${block.status}`;
-      statusBadge.textContent = getStatusLabel(block.status);
-
-      header.appendChild(title);
-      header.appendChild(statusBadge);
-      blockEl.appendChild(header);
-
-      // Content
-      const content = document.createElement('div');
-      content.className = 'block-content';
-
-      if (block.description) {
-        const desc = document.createElement('p');
-        desc.className = 'block-desc';
-        desc.textContent = block.description;
-        content.appendChild(desc);
-      }
-
-      switch (block.type) {
-        case 'input':
-        case 'number':
-          renderInputBlock(content, block, git);
-          break;
-        case 'toggle':
-          renderToggleBlock(content, block, git);
-          break;
-        case 'complex':
-          renderComplexBlock(content, block, git);
-          break;
-      }
-
-      blockEl.appendChild(content);
-      timeline.appendChild(blockEl);
+      const item = createTimelineItem(block, git);
+      timeline.appendChild(item);
     });
 
     workflowContainer.appendChild(timeline);
   }
 
-  function renderCreateWorkflowButton() {
+  function renderCreateWorkflowButton(git) {
     const container = document.createElement('div');
     container.className = 'create-workflow-container';
 
+    // Branch Selection (only if not standard)
+    let sourceBranch = 'master'; // Default
+
+    if (git && !git.isStandardBranch) {
+      const selectWrapper = document.createElement('div');
+      selectWrapper.className = 'branch-select-wrapper';
+      selectWrapper.style.marginBottom = '10px';
+
+      const label = document.createElement('span');
+      label.textContent = currentLanguage === 'zh-CN' ? '基准分支: ' : 'Base Branch: ';
+      label.style.fontSize = '12px';
+      label.style.marginRight = '8px';
+
+      const select = document.createElement('select');
+      select.className = 'branch-select';
+      select.style.padding = '4px';
+      select.style.borderRadius = '4px';
+      select.style.background = 'var(--vscode-dropdown-background)';
+      select.style.color = 'var(--vscode-dropdown-foreground)';
+      select.style.border = '1px solid var(--vscode-dropdown-border)';
+
+      const optMaster = document.createElement('option');
+      optMaster.value = 'master';
+      optMaster.textContent = currentLanguage === 'zh-CN' ? '最新 Master' : 'Latest Master';
+
+      const optCurrent = document.createElement('option');
+      optCurrent.value = 'current';
+      optCurrent.textContent = currentLanguage === 'zh-CN' ? '当前分支' : 'Current Branch';
+
+      select.appendChild(optMaster);
+      select.appendChild(optCurrent);
+
+      select.addEventListener('change', (e) => {
+        sourceBranch = e.target.value;
+      });
+
+      selectWrapper.appendChild(label);
+      selectWrapper.appendChild(select);
+      container.appendChild(selectWrapper);
+    }
+
     const btn = document.createElement('button');
     btn.className = 'create-workflow-btn';
-    btn.textContent = '创建需求流程';
+    btn.textContent = currentLanguage === 'zh-CN' ? '创建需求流程' : 'Create Requirement Workflow';
     btn.addEventListener('click', () => {
-      // We can just reload with a flag, or simply start rendering blocks.
-      // Since blocks are already there (just hidden/empty), we can just force render them?
-      // Actually, the service returns them. 
-      // We might need to "initialize" it on the backend?
-      // Or just by saving the first empty block, we "start" it?
-      // Let's just render the blocks immediately by calling renderWorkflow with the same data 
-      // but bypassing this check? 
-      // No, we need to persist that we started.
-      // Let's just render the blocks. The user will fill the first one and save, which persists progress.
-      // We need to manually trigger a re-render or just hide the button and show blocks.
-      // But we need 'data' to render blocks. We have it.
-      // So:
+      // Clear the container to remove the button and prevent duplicates
       workflowContainer.innerHTML = '';
-      // We need to pass the data we had. We can store it in a global variable 'workflowData' (already exists).
-      // But we need to bypass the check.
-      // Let's set a flag on the data or locally.
-      // Hack: just set a dummy data on first block to trigger "hasProgress"? No.
-      // Let's just render the timeline directly.
-      // We need to access 'workflowData' and 'gitInfo' which are global.
       renderWorkflowBlocks(workflowData, gitInfo);
     });
 
@@ -301,17 +279,24 @@
     const timeline = document.createElement('div');
     timeline.className = 'workflow-timeline';
 
-    data.blocks.forEach((block, index) => {
+    data.blocks.forEach((block) => {
       if (!block.isVisible) return;
-      // ... (Same rendering logic as above)
-      // To avoid duplication, I should extract `createBlockElement`.
-      const blockEl = createBlockElement(block, index, git);
-      timeline.appendChild(blockEl);
+      const item = createTimelineItem(block, git);
+      timeline.appendChild(item);
     });
     workflowContainer.appendChild(timeline);
   }
 
-  function createBlockElement(block, index, git) {
+  function createTimelineItem(block, git) {
+    const item = document.createElement('div');
+    item.className = 'timeline-item';
+
+    // Marker
+    const marker = document.createElement('div');
+    marker.className = `timeline-marker ${block.status}`;
+    item.appendChild(marker);
+
+    // Block Card
     const blockEl = document.createElement('div');
     blockEl.className = `workflow-block ${block.status}`;
     blockEl.dataset.id = block.id;
@@ -322,15 +307,12 @@
 
     const title = document.createElement('span');
     title.className = 'block-title';
-    title.textContent = `${index + 1}. ${block.title}`;
+    title.textContent = block.title; // Removed index
     if (block.required) title.classList.add('required');
 
-    const statusBadge = document.createElement('span');
-    statusBadge.className = `status-badge ${block.status}`;
-    statusBadge.textContent = getStatusLabel(block.status);
+    // Removed status badge
 
     header.appendChild(title);
-    header.appendChild(statusBadge);
     blockEl.appendChild(header);
 
     // Content
@@ -358,32 +340,76 @@
     }
 
     blockEl.appendChild(content);
-    return blockEl;
+    item.appendChild(blockEl);
+
+    return item;
   }
 
   function renderInputBlock(container, block, git) {
-    const input = document.createElement('input');
-    input.type = block.type === 'number' ? 'number' : 'text';
-    input.value = block.data || '';
-    input.placeholder = block.placeholder || '';
-
-    const saveBtn = document.createElement('button');
-    saveBtn.textContent = '保存';
-    saveBtn.className = 'save-btn';
-    saveBtn.addEventListener('click', () => {
-      vscode.postMessage({
-        type: 'saveWorkflowStep',
-        branch: git.currentBranch,
-        blockId: block.id,
-        data: input.value
-      });
-    });
-
     const wrapper = document.createElement('div');
     wrapper.className = 'input-wrapper';
+
+    const input = document.createElement('input');
+    input.type = block.type === 'number' ? 'number' : 'text';
+    input.className = 'input-field';
+    input.placeholder = block.placeholder || '';
+    input.value = block.data || '';
+
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'save-btn';
+    saveBtn.textContent = '保存';
+    saveBtn.disabled = !input.value; // Initial state
+
+    const errorMsg = document.createElement('div');
+    errorMsg.className = 'error-msg';
+    errorMsg.style.color = 'var(--vscode-errorForeground)';
+    errorMsg.style.fontSize = '11px';
+    errorMsg.style.marginTop = '4px';
+    errorMsg.style.display = 'none';
+
+    // Validation Logic
+    const validate = (value) => {
+      if (!value) return { valid: false, msg: '' };
+      if (block.type === 'number') {
+        const isValid = !isNaN(value) && value.trim() !== '';
+        return { valid: isValid, msg: isValid ? '' : '请输入有效的数字' };
+      }
+      if (block.type === 'input' && (block.id === 'prd' || block.id === 'design' || block.id === 'tech')) {
+        // Simple URL validation for specific fields
+        const isValid = /^(http|https):\/\/[^ "]+$/.test(value);
+        return { valid: isValid, msg: isValid ? '' : '请输入有效的链接 (http/https)' };
+      }
+      return { valid: true, msg: '' };
+    };
+
+    input.addEventListener('input', (e) => {
+      const { valid, msg } = validate(e.target.value);
+      saveBtn.disabled = !valid;
+      if (!valid && e.target.value) {
+        input.style.borderColor = 'var(--vscode-errorForeground)';
+        errorMsg.textContent = msg;
+        errorMsg.style.display = 'block';
+      } else {
+        input.style.borderColor = '';
+        errorMsg.style.display = 'none';
+      }
+    });
+
+    saveBtn.addEventListener('click', () => {
+      if (validate(input.value).valid) {
+        vscode.postMessage({
+          type: 'saveWorkflowStep',
+          branch: git.currentBranch,
+          blockId: block.id,
+          data: input.value
+        });
+      }
+    });
+
     wrapper.appendChild(input);
     wrapper.appendChild(saveBtn);
     container.appendChild(wrapper);
+    container.appendChild(errorMsg);
   }
 
   function renderToggleBlock(container, block, git) {
@@ -414,6 +440,42 @@
     // Development Block
     if (block.id === 'development') {
       if (!git.isStandardBranch) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'dev-branch-gen-wrapper';
+
+        // Branch Source Selection
+        const selectWrapper = document.createElement('div');
+        selectWrapper.className = 'branch-select-wrapper';
+        selectWrapper.style.marginBottom = '10px';
+
+        const label = document.createElement('span');
+        label.textContent = currentLanguage === 'zh-CN' ? '基准分支: ' : 'Base Branch: ';
+        label.style.fontSize = '12px';
+        label.style.marginRight = '8px';
+
+        const select = document.createElement('select');
+        select.className = 'branch-select';
+        select.style.padding = '4px';
+        select.style.borderRadius = '4px';
+        select.style.background = 'var(--vscode-dropdown-background)';
+        select.style.color = 'var(--vscode-dropdown-foreground)';
+        select.style.border = '1px solid var(--vscode-dropdown-border)';
+
+        const optMaster = document.createElement('option');
+        optMaster.value = 'master';
+        optMaster.textContent = currentLanguage === 'zh-CN' ? '最新 Master' : 'Latest Master';
+
+        const optCurrent = document.createElement('option');
+        optCurrent.value = 'current';
+        optCurrent.textContent = currentLanguage === 'zh-CN' ? '当前分支' : 'Current Branch';
+
+        select.appendChild(optMaster);
+        select.appendChild(optCurrent);
+
+        selectWrapper.appendChild(label);
+        selectWrapper.appendChild(select);
+        wrapper.appendChild(selectWrapper);
+
         const btn = document.createElement('button');
         btn.textContent = '生成需求分支';
         btn.className = 'action-btn primary';
@@ -430,19 +492,18 @@
               type: 'fetchPrdTitle',
               url: prdBlock.data
             });
-            // We need to wait for title? 
-            // The backend will send 'prdTitleFetched' message.
-            // We should handle that.
-            // For now, let's just trigger the fetch and handle the response in message listener.
-            // But we need to know it's for branch generation.
-            // Let's store a pending state?
-            window.pendingBranchGen = { meegleId: idBlock.data };
+            // Store pending state with source branch
+            window.pendingBranchGen = {
+              meegleId: idBlock.data,
+              sourceBranch: select.value
+            };
           } else {
             // Alert user
             vscode.postMessage({ type: 'error', message: '请先填写 PRD 链接和 Meegle ID' });
           }
         });
-        container.appendChild(btn);
+        wrapper.appendChild(btn);
+        container.appendChild(wrapper);
       } else {
         // Standard Branch: Show Git Ops
         const actions = [
@@ -466,6 +527,22 @@
           });
           group.appendChild(btn);
         });
+
+        // Add "Complete and Proceed" button
+        const completeBtn = document.createElement('button');
+        completeBtn.textContent = '完成并进入下一步';
+        completeBtn.className = 'action-btn primary';
+        completeBtn.style.marginTop = '10px';
+        completeBtn.addEventListener('click', () => {
+          vscode.postMessage({
+            type: 'saveWorkflowStep',
+            branch: git.currentBranch,
+            blockId: block.id,
+            data: true // Mark as completed
+          });
+        });
+        group.appendChild(completeBtn);
+
         container.appendChild(group);
       }
     }
@@ -540,12 +617,19 @@
         }
         break;
       case 'workflowUpdated':
-        workflowData = message.workflow;
-        if (gitInfo && workflowData) {
+        if (message.workflow) {
+          workflowData = message.workflow;
           renderWorkflow(workflowData, gitInfo);
         }
         break;
       case 'gitInfoUpdated':
+        if (message.gitInfo) {
+          gitInfo = message.gitInfo;
+          workflowData = message.workflow; // Also update workflow data as it depends on branch
+          renderWorkflow(workflowData, gitInfo);
+        }
+        break;
+      case 'stageActionStatus':
         gitInfo = message.gitInfo;
         if (gitInfo && workflowData) {
           renderWorkflow(workflowData, gitInfo);

@@ -71,46 +71,24 @@ export class WorkflowService {
   }
 
   private updateVisibility(blocks: WorkflowBlock[]) {
-      // Logic: Block N is visible if Block N-1 is completed (or if N=0)
-      // Also handle optional blocks? If optional, maybe it doesn't block next?
-      // Requirement: "Sequential step enforcement"
+      // Logic: Block N is visible if Block N-1 is visible AND (Block N-1 is completed OR Block N-1 is optional)
       
+      // First block always visible
+      blocks[0].isVisible = true;
+
       for (let i = 1; i < blocks.length; i++) {
           const prevBlock = blocks[i - 1];
-          if (prevBlock.status === 'completed' || (!prevBlock.required && prevBlock.status === 'pending')) {
-               // Actually, if it's optional, do we require it to be marked completed?
-               // Usually optional means you can skip it. But how do you skip?
-               // Maybe just by proceeding?
-               // Let's assume if it's optional, we show the next one regardless?
-               // Or we require explicit "skip"?
-               // For now, let's say if prev is completed.
-               // If prev is optional, maybe we need a way to say "done" or "skip".
-               // But for 'tech' (optional), inputting text makes it completed.
-               // If empty, it's pending.
-               // Let's strictly enforce: must be completed.
-               // Wait, if it's optional, user might not fill it.
-               // So if optional, we should probably allow next step if prev is visible?
-               // No, that opens everything.
-               // Let's stick to: Next block visible if Prev block is completed.
-               // User must fill optional blocks? No that makes them required.
-               // Let's change logic: 
-               // If prev is required, must be completed.
-               // If prev is optional, can be pending? 
-               // If so, how do we know when to show next?
-               // Maybe optional blocks are always "completed" effectively?
-               // Let's just make 'tech' required for now to simplify, or assume user types something.
-               // Or better: Optional blocks don't block.
-               if (prevBlock.required && prevBlock.status !== 'completed') {
-                   blocks[i].isVisible = false;
-               } else {
-                   blocks[i].isVisible = true;
-               }
+          
+          if (prevBlock.isVisible) {
+              if (prevBlock.status === 'completed' || !prevBlock.required) {
+                  blocks[i].isVisible = true;
+              } else {
+                  blocks[i].isVisible = false;
+              }
           } else {
               blocks[i].isVisible = false;
           }
       }
-      // First block always visible
-      blocks[0].isVisible = true;
   }
 
   // Helper for legacy support or specific link saving

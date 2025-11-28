@@ -64,6 +64,7 @@ body {
   border: 1px solid var(--vscode-editorWidget-border);
   opacity: 0.5;
   transition: all 0.2s ease;
+  background-color: white;
 }
 
 .auth-badge.active {
@@ -219,8 +220,8 @@ body {
 .timeline-marker {
   position: absolute;
   left: -32px;
-  width: 24px;
-  height: 24px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--vscode-editor-background);
   border: 2px solid var(--vscode-editorWidget-border);
@@ -300,79 +301,113 @@ body {
   background: var(--vscode-button-hoverBackground);
 }
 
-/* Workflow Styles */
+/* Workflow Timeline */
 .workflow-timeline {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 10px 0;
+  position: relative;
+  padding-left: 16px;
+  margin-left: 8px;
+}
+
+.workflow-timeline::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 0;
+  width: 2px;
+  background: var(--vscode-editorWidget-border);
+}
+
+.timeline-item {
+  position: relative;
+  margin-bottom: 12px;
+  padding-left: 6px;
+}
+
+.timeline-marker {
+  position: absolute;
+  left: -21px; /* Aligns center of 12px marker with center of 2px line at 0px relative to 16px padding */
+  top: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--vscode-editor-background);
+  border: 2px solid var(--vscode-descriptionForeground);
+  z-index: 1;
+  transition: all 0.3s ease;
+}
+
+.timeline-marker.completed {
+  background: var(--vscode-testing-iconPassed);
+  border-color: var(--vscode-testing-iconPassed);
+}
+
+.timeline-marker.pending {
+  border-color: var(--vscode-textLink-foreground);
+  background: var(--vscode-editor-background);
+  animation: blink 1.5s infinite ease-in-out;
+}
+
+@keyframes blink {
+  0% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
 .workflow-block {
   background: var(--vscode-editor-background);
   border: 1px solid var(--vscode-widget-border);
   border-radius: 6px;
-  padding: 12px;
+  padding: 8px 12px;
   transition: all 0.2s ease;
-}
-
-.workflow-block.completed {
-  border-color: var(--vscode-testing-iconPassed);
-}
-
-.workflow-block.pending {
-  border-left: 3px solid var(--vscode-descriptionForeground);
 }
 
 .block-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .block-title {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
 }
 
-.block-title.required::after {
+.block-title.required::before {
   content: '*';
   color: var(--vscode-errorForeground);
-  margin-left: 4px;
-}
-
-.status-badge {
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: var(--vscode-badge-background);
-  color: var(--vscode-badge-foreground);
-}
-
-.status-badge.completed {
-  background: var(--vscode-testing-iconPassed);
-  color: #fff;
+  margin-right: 4px;
 }
 
 .block-desc {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--vscode-descriptionForeground);
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .input-wrapper {
   display: flex;
   gap: 8px;
+  margin-bottom: 4px;
+  width: 100%; /* Ensure wrapper takes full width */
 }
 
-.input-wrapper input {
-  flex: 1;
-  padding: 6px;
-  border: 1px solid var(--vscode-input-border);
+.input-field {
+  flex: 1; /* Expand to fill available space */
+  width: 100%; /* Fallback */
+  padding: 4px 8px;
   background: var(--vscode-input-background);
   color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border);
   border-radius: 4px;
+  outline: none;
+}
+
+.input-field:focus {
+  border-color: var(--vscode-focusBorder);
 }
 
 .save-btn {
@@ -494,4 +529,30 @@ input:checked + .slider:before {
 
 .hidden {
   display: none !important;
+}
+
+/* Instruction Grid */
+.instruction-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.instruction-button {
+  padding: 8px 12px;
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.2s;
+}
+
+.instruction-button:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
 }
