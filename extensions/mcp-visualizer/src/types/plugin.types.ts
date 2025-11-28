@@ -4,6 +4,7 @@ export interface DocVariant {
   language: SupportedLanguage;
   label: string;
   filePath: string;
+  content?: string;
 }
 
 export interface McpDocEntry {

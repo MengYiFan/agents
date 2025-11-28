@@ -39,13 +39,15 @@ export function getWebviewHtml(
   </head>
   <body>
     <header class="view-header">
-      <div class="view-title">
-        <h1 data-i18n="header.title">${uiText.header.title}</h1>
-        <p data-i18n="header.subtitle">${uiText.header.subtitle}</p>
-      </div>
-      <div class="view-actions">
-        <div class="locale-switcher" id="uiLocaleSwitcher"></div>
+      <div class="header-left">
+        <div class="header-info">
+          <h1 data-i18n="header.title">${uiText.header.title}</h1>
+          <p data-i18n="header.subtitle">${uiText.header.subtitle}</p>
+        </div>
         <div class="auth-badges" id="authBadges"></div>
+      </div>
+      <div class="header-right">
+        <div class="locale-switcher" id="uiLocaleSwitcher"></div>
       </div>
     </header>
     <div class="tab-container">
@@ -54,61 +56,17 @@ export function getWebviewHtml(
         <button class="tab-button" data-target="workflowTab" data-i18n="tabs.workflow">${uiText.tabs.workflow}</button>
       </div>
       <div id="listTab" class="tab-content active">
-        <section class="panel">
-          <header class="panel-header">
-            <h2 data-i18n="docs.title">${uiText.docs.title}</h2>
-            <p data-i18n="docs.subtitle">${uiText.docs.subtitle}</p>
-          </header>
-          <div class="mcp-panel">
-            <nav id="mcpNav" class="mcp-nav"></nav>
-            <section class="mcp-preview">
-              <div class="preview-header">
-                <div class="language-switcher" id="languageSwitcher"></div>
-              </div>
-              <article class="mcp-content" id="mcpContent" data-i18n="docs.placeholder">${uiText.docs.placeholder}</article>
-            </section>
-          </div>
-        </section>
-        <section class="panel">
-          <header class="panel-header">
-            <h2 data-i18n="instructions.title">${uiText.instructions.title}</h2>
-            <p data-i18n="instructions.subtitle">${uiText.instructions.subtitle}</p>
-          </header>
-          <div class="instruction-list" id="instructionList"></div>
-        </section>
+        <div class="mcp-grid" id="mcpList"></div>
+        <div class="instruction-list" id="instructionList"></div>
       </div>
       <div id="workflowTab" class="tab-content">
-        <ol class="workflow-steps" id="workflowSteps"></ol>
-        <template id="gitWorkflowDiagram">
-          <div class="diagram-container">
-            <div class="diagram">
-              <svg viewBox="0 0 1200 600">
-                <g id="stageNodes">
-                  ${renderStageNodes(stages)}
-                </g>
-                ${renderBranchLanes(uiText.diagram)}
-                ${renderBranchNodes(uiText.diagram)}
-              </svg>
-            </div>
-            <aside class="stage-info">
-              <h3 id="stageTitle" data-i18n="stage.infoTitle">${uiText.stage.infoTitle}</h3>
-              <p id="stageDesc" data-i18n="stage.infoDescription">${uiText.stage.infoDescription}</p>
-              <h4 data-i18n="stage.branchesTitle">${uiText.stage.branchesTitle}</h4>
-              <ul id="stageBranches"></ul>
-              <h4 data-i18n="stage.actionsTitle">${uiText.stage.actionsTitle}</h4>
-              <div id="stageActions" class="stage-actions">
-                <p class="stage-actions-empty" data-i18n="stage.actionsEmpty">${uiText.stage.actionsEmpty}</p>
-              </div>
-              <div id="stageActionStatus" class="stage-action-status hidden"></div>
-              <h4 data-i18n="stage.commandsTitle">${uiText.stage.commandsTitle}</h4>
-              <ul id="stageCommands" class="stage-commands"></ul>
-              <p id="stageCommandsEmpty" class="stage-commands-empty" data-i18n="stage.commandsEmpty">${uiText.stage.commandsEmpty}</p>
-            </aside>
-          </div>
-        </template>
+        <div id="workflowContainer" class="workflow-container"></div>
+        <div id="stageActions" class="stage-actions"></div>
+        <div id="workflowMessage" class="workflow-message hidden"></div>
       </div>
     </div>
     <script nonce="${nonce}" src="${scriptUri}"></script>
   </body>
 </html>`;
 }
+

@@ -4,28 +4,19 @@
 
   const tabButtons = Array.from(document.querySelectorAll('.tab-button'));
   const tabPanels = Array.from(document.querySelectorAll('.tab-content'));
-  const mcpNav = document.getElementById('mcpNav');
-  const mcpContent = document.getElementById('mcpContent');
-  const languageSwitcher = document.getElementById('languageSwitcher');
+  const mcpList = document.getElementById('mcpList');
   const instructionList = document.getElementById('instructionList');
-  const workflowSteps = document.getElementById('workflowSteps');
-  const stageActionsContainer = document.getElementById('stageActions');
-  const stageActionStatus = document.getElementById('stageActionStatus');
-  const stageCommandsList = document.getElementById('stageCommands');
-  const stageCommandsEmpty = document.getElementById('stageCommandsEmpty');
+  const workflowContainer = document.getElementById('workflowContainer');
+
   const authBadges = document.getElementById('authBadges');
   const uiLocaleSwitcher = document.getElementById('uiLocaleSwitcher');
 
   let docs = [];
-  let currentDocId = persistedState.selectedDocId || null;
   let currentLanguage = persistedState.selectedLanguage || null;
-  let currentStageId = persistedState.currentStageId || null;
-  const workflowState = persistedState.workflowValues || {};
-  const stageActionState = persistedState.stageActionState || {};
-  const stageInfoCache = persistedState.stageInfoCache || {};
   let uiText = persistedState.uiText || null;
   let currentLocale = persistedState.locale || 'zh-CN';
-  let availableLocales = [];
+  let gitInfo = null;
+  let workflowData = null;
 
   function updateState(patch) {
     persistedState = { ...persistedState, ...patch };
@@ -37,13 +28,6 @@
       return '';
     }
     return path.split('.').reduce((acc, key) => (acc && acc[key] !== undefined ? acc[key] : undefined), uiText) || '';
-  }
-
-  function formatText(template, replacements) {
-    if (!template) {
-      return '';
-    }
-    return template.replace(/\{(\w+)\}/g, (_, key) => (replacements && replacements[key] !== undefined ? replacements[key] : ''));
   }
 
   function applyTranslations(text, locale) {
@@ -65,41 +49,6 @@
         node.textContent = value;
       }
     });
-
-    document.querySelectorAll('[data-i18n-placeholder]').forEach((node) => {
-      const key = node.getAttribute('data-i18n-placeholder');
-      const value = getText(key);
-      if (value) {
-        node.setAttribute('placeholder', value);
-      }
-    });
-
-    if (mcpContent) {
-      const placeholder = getText('docs.placeholder');
-      if (placeholder) {
-        mcpContent.textContent = placeholder;
-      }
-    }
-
-    if (stageActionsContainer) {
-      const empty = stageActionsContainer.querySelector('.stage-actions-empty');
-      const emptyText = getText('stage.actionsEmpty');
-      if (empty && emptyText) {
-        empty.textContent = emptyText;
-      }
-    }
-
-    if (stageCommandsEmpty) {
-      const emptyCommandsText = getText('stage.commandsEmpty');
-      if (emptyCommandsText) {
-        stageCommandsEmpty.textContent = emptyCommandsText;
-      }
-      stageCommandsEmpty.classList.remove('hidden');
-    }
-
-    if (stageCommandsList) {
-      stageCommandsList.classList.add('hidden');
-    }
 
     updateLocaleButtons();
   }
@@ -140,176 +89,408 @@
     });
   });
 
+
+
   function renderDocList(docEntries) {
     docs = docEntries;
-    mcpNav.innerHTML = '';
-    docEntries.forEach((doc) => {
-      const item = document.createElement('button');
-      item.type = 'button';
-      item.className = 'mcp-item';
-      item.dataset.id = doc.id;
-      if (doc.description) {
-        item.title = doc.description;
-      }
-      const title = document.createElement('span');
-      title.className = 'mcp-item-title';
-      title.textContent = doc.title;
-      item.appendChild(title);
+    mcpList.innerHTML = '';
 
-      if (doc.description) {
-        const meta = document.createElement('span');
-        meta.className = 'mcp-item-meta';
-        meta.textContent = doc.description;
-        item.appendChild(meta);
-      }
-
-      item.addEventListener('click', () => {
-        selectDoc(doc.id, doc.defaultLanguage);
-      });
-      mcpNav.appendChild(item);
-    });
-  }
-
-  function renderLanguageOptions(doc) {
-    languageSwitcher.innerHTML = '';
-    doc.languages.forEach((lang) => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'language-button';
-      button.dataset.language = lang.language;
-      button.textContent = lang.label;
-      const isActive = lang.language === currentLanguage;
-      button.classList.toggle('active', isActive);
-      button.disabled = doc.languages.length === 1;
-      button.addEventListener('click', () => {
-        if (currentLanguage === lang.language) {
-          return;
-        }
-        currentLanguage = lang.language;
-        updateState({ selectedLanguage: currentLanguage });
-        updateLanguageActive();
-        requestDocContent(doc.id, currentLanguage);
-      });
-      languageSwitcher.appendChild(button);
-    });
-  }
-
-  function updateLanguageActive() {
-    Array.from(languageSwitcher.querySelectorAll('.language-button')).forEach((button) => {
-      button.classList.toggle('active', button.dataset.language === currentLanguage);
-    });
-  }
-
-  function highlightDocItem(docId) {
-    Array.from(document.querySelectorAll('.mcp-item')).forEach((item) => {
-      item.classList.toggle('active', item.dataset.id === docId);
-    });
-  }
-
-  function requestDocContent(docId, language) {
-    vscode.postMessage({ type: 'openDoc', docId, language });
-  }
-
-  function selectDoc(docId, language) {
-    const doc = docs.find((item) => item.id === docId);
-    if (!doc) {
+    if (docEntries.length === 0) {
+      mcpList.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--vscode-descriptionForeground);">No MCPs found.</p>';
       return;
     }
-    currentDocId = docId;
-    currentLanguage = language || doc.defaultLanguage;
-    updateState({ selectedDocId: currentDocId, selectedLanguage: currentLanguage });
-    highlightDocItem(docId);
-    renderLanguageOptions(doc);
-    requestDocContent(docId, currentLanguage);
+
+    docEntries.forEach((doc) => {
+      const card = document.createElement('div');
+      card.className = 'mcp-card';
+      card.dataset.id = doc.id;
+
+      const title = document.createElement('div');
+      title.className = 'mcp-card-title';
+      title.textContent = doc.title;
+      card.appendChild(title);
+
+      const desc = document.createElement('div');
+      desc.className = 'mcp-card-desc';
+      desc.textContent = doc.description || 'No description available.';
+      card.appendChild(desc);
+
+      const meta = document.createElement('div');
+      meta.className = 'mcp-card-meta';
+
+      const langLabel = document.createElement('span');
+      langLabel.textContent = doc.defaultLanguage === 'zh-CN' ? '中文' : 'English';
+      meta.appendChild(langLabel);
+
+      card.appendChild(meta);
+
+      card.addEventListener('click', () => {
+        // If content is already available (API agents), render it directly or ask extension to open it
+        if (doc.content) {
+          // For now, let's assume we want to open it in a new tab via extension
+          // We pass the content or just the ID if the extension can handle it.
+          // Since the extension expects to load file content, we might need to handle this differently.
+          // But for now, let's stick to the existing message structure.
+          vscode.postMessage({ type: 'openDoc', docId: doc.id, language: doc.defaultLanguage, content: doc.content });
+        } else {
+          vscode.postMessage({ type: 'openDoc', docId: doc.id, language: doc.defaultLanguage });
+        }
+      });
+      mcpList.appendChild(card);
+    });
   }
 
   function renderInstructions(instructions) {
+    if (!instructionList) return;
     instructionList.innerHTML = '';
+
+    if (!instructions || instructions.length === 0) return;
+
+    const header = document.createElement('h3');
+    header.textContent = '快捷指令';
+    header.style.marginBottom = '10px';
+    instructionList.appendChild(header);
+
+    const list = document.createElement('div');
+    list.className = 'instruction-grid'; // Use grid for layout
+
     instructions.forEach((item) => {
-      const card = document.createElement('div');
-      card.className = 'instruction-item';
-
-      const title = document.createElement('h3');
-      title.textContent = item.title;
-      card.appendChild(title);
-
-      const desc = document.createElement('p');
-      desc.textContent = item.description;
-      card.appendChild(desc);
-
-      const action = document.createElement('button');
-      action.type = 'button';
-      action.className = 'instruction-action';
-      action.textContent = item.actionLabel;
-      action.addEventListener('click', () => {
+      const btn = document.createElement('button');
+      btn.className = 'instruction-button';
+      btn.textContent = item.title;
+      btn.title = item.description;
+      btn.addEventListener('click', () => {
         vscode.postMessage({ type: 'executeInstruction', instructionId: item.id });
       });
-      card.appendChild(action);
-
-      instructionList.appendChild(card);
+      list.appendChild(btn);
     });
+    instructionList.appendChild(list);
   }
 
-  function renderWorkflow(steps) {
-    workflowSteps.innerHTML = '';
-    steps.forEach((step, index) => {
-      const item = document.createElement('li');
-      item.className = 'workflow-step';
-      item.dataset.step = step.id;
+  function renderWorkflow(data, git) {
+    workflowContainer.innerHTML = '';
 
+    // Check if we need to show "Create Requirement Workflow"
+    // Condition: Not a standard branch AND no active workflow data (or empty blocks)
+    // Actually, the requirement says: "对于非标准分支，需要显示按钮「创建需求流程」"
+    // But if we already started a workflow on a non-standard branch (e.g. main), we should probably show it?
+    // Let's assume if it's not standard, we show the button. 
+    // BUT, if the user clicked the button, we should be in a state where we show the blocks.
+    // The service returns blocks. If they are all pending/empty, maybe we show the button?
+    // Or we rely on a flag? 
+    // Let's use a simple heuristic: if it's not a standard branch, we prepend a "Create Workflow" section.
+    // If the user clicks it, we might just start rendering the blocks (which are already returned by service).
+    // Wait, if it's not a standard branch, the service returns initial blocks.
+    // So we should check if the user has "started" it. 
+    // Let's check if the first block has data or if we are in a "started" mode.
+    // For simplicity: If not standard branch, show button. If button clicked, hide button and show blocks.
+    // We can use a local state for this "started" flag if not persisted.
+    // Or better: check if any block has status 'completed' or data.
+
+    const hasProgress = data.blocks.some(b => b.status === 'completed' || b.data);
+    const isStandard = git && git.isStandardBranch;
+
+    if (!isStandard && !hasProgress) {
+      renderCreateWorkflowButton();
+      return;
+    }
+
+    // Render Blocks
+    const timeline = document.createElement('div');
+    timeline.className = 'workflow-timeline';
+
+    data.blocks.forEach((block, index) => {
+      if (!block.isVisible) return;
+
+      const blockEl = document.createElement('div');
+      blockEl.className = `workflow-block ${block.status}`;
+      blockEl.dataset.id = block.id;
+
+      // Header
       const header = document.createElement('div');
-      header.className = 'step-header';
+      header.className = 'block-header';
 
-      const badge = document.createElement('span');
-      badge.className = 'step-index';
-      badge.textContent = String(index + 1).padStart(2, '0');
-      header.appendChild(badge);
+      const title = document.createElement('span');
+      title.className = 'block-title';
+      title.textContent = `${index + 1}. ${block.title}`;
+      if (block.required) title.classList.add('required');
 
-      const title = document.createElement('h3');
-      title.textContent = step.title;
+      const statusBadge = document.createElement('span');
+      statusBadge.className = `status-badge ${block.status}`;
+      statusBadge.textContent = getStatusLabel(block.status);
+
       header.appendChild(title);
+      header.appendChild(statusBadge);
+      blockEl.appendChild(header);
 
-      if (step.optional) {
-        const optionalLabel = document.createElement('span');
-        optionalLabel.className = 'step-optional';
-        optionalLabel.textContent = getText('workflow.optionalLabel') || 'Optional';
-        header.appendChild(optionalLabel);
+      // Content
+      const content = document.createElement('div');
+      content.className = 'block-content';
+
+      if (block.description) {
+        const desc = document.createElement('p');
+        desc.className = 'block-desc';
+        desc.textContent = block.description;
+        content.appendChild(desc);
       }
 
-      item.appendChild(header);
-
-      const description = document.createElement('p');
-      description.className = 'step-description';
-      description.textContent = step.description;
-      item.appendChild(description);
-
-      if (step.type === 'link') {
-        item.appendChild(createLinkInput(step));
-      } else if (step.type === 'diagram') {
-        item.appendChild(createDiagramSection());
-      } else if (step.type === 'notes') {
-        item.appendChild(createNotesSection(step));
+      switch (block.type) {
+        case 'input':
+        case 'number':
+          renderInputBlock(content, block, git);
+          break;
+        case 'toggle':
+          renderToggleBlock(content, block, git);
+          break;
+        case 'complex':
+          renderComplexBlock(content, block, git);
+          break;
       }
 
-      workflowSteps.appendChild(item);
+      blockEl.appendChild(content);
+      timeline.appendChild(blockEl);
     });
 
-    attachStageListeners();
-    attachBranchListeners();
+    workflowContainer.appendChild(timeline);
+  }
+
+  function renderCreateWorkflowButton() {
+    const container = document.createElement('div');
+    container.className = 'create-workflow-container';
+
+    const btn = document.createElement('button');
+    btn.className = 'create-workflow-btn';
+    btn.textContent = '创建需求流程';
+    btn.addEventListener('click', () => {
+      // We can just reload with a flag, or simply start rendering blocks.
+      // Since blocks are already there (just hidden/empty), we can just force render them?
+      // Actually, the service returns them. 
+      // We might need to "initialize" it on the backend?
+      // Or just by saving the first empty block, we "start" it?
+      // Let's just render the blocks immediately by calling renderWorkflow with the same data 
+      // but bypassing this check? 
+      // No, we need to persist that we started.
+      // Let's just render the blocks. The user will fill the first one and save, which persists progress.
+      // We need to manually trigger a re-render or just hide the button and show blocks.
+      // But we need 'data' to render blocks. We have it.
+      // So:
+      workflowContainer.innerHTML = '';
+      // We need to pass the data we had. We can store it in a global variable 'workflowData' (already exists).
+      // But we need to bypass the check.
+      // Let's set a flag on the data or locally.
+      // Hack: just set a dummy data on first block to trigger "hasProgress"? No.
+      // Let's just render the timeline directly.
+      // We need to access 'workflowData' and 'gitInfo' which are global.
+      renderWorkflowBlocks(workflowData, gitInfo);
+    });
+
+    container.appendChild(btn);
+    workflowContainer.appendChild(container);
+  }
+
+  // Helper to render blocks directly (skipping the check)
+  function renderWorkflowBlocks(data, git) {
+    // Reuse the logic inside renderWorkflow but without the check
+    // Refactoring renderWorkflow to separate the check
+    // ... For now, let's just copy-paste the rendering part or restructure.
+    // Let's restructure renderWorkflow slightly in the next step or just inline it here.
+    // Actually, I can just set a flag `forceShow`?
+    // Let's just call renderWorkflow with a flag? No, signature fixed.
+    // Let's just manually render here.
+
+    const timeline = document.createElement('div');
+    timeline.className = 'workflow-timeline';
+
+    data.blocks.forEach((block, index) => {
+      if (!block.isVisible) return;
+      // ... (Same rendering logic as above)
+      // To avoid duplication, I should extract `createBlockElement`.
+      const blockEl = createBlockElement(block, index, git);
+      timeline.appendChild(blockEl);
+    });
+    workflowContainer.appendChild(timeline);
+  }
+
+  function createBlockElement(block, index, git) {
+    const blockEl = document.createElement('div');
+    blockEl.className = `workflow-block ${block.status}`;
+    blockEl.dataset.id = block.id;
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'block-header';
+
+    const title = document.createElement('span');
+    title.className = 'block-title';
+    title.textContent = `${index + 1}. ${block.title}`;
+    if (block.required) title.classList.add('required');
+
+    const statusBadge = document.createElement('span');
+    statusBadge.className = `status-badge ${block.status}`;
+    statusBadge.textContent = getStatusLabel(block.status);
+
+    header.appendChild(title);
+    header.appendChild(statusBadge);
+    blockEl.appendChild(header);
+
+    // Content
+    const content = document.createElement('div');
+    content.className = 'block-content';
+
+    if (block.description) {
+      const desc = document.createElement('p');
+      desc.className = 'block-desc';
+      desc.textContent = block.description;
+      content.appendChild(desc);
+    }
+
+    switch (block.type) {
+      case 'input':
+      case 'number':
+        renderInputBlock(content, block, git);
+        break;
+      case 'toggle':
+        renderToggleBlock(content, block, git);
+        break;
+      case 'complex':
+        renderComplexBlock(content, block, git);
+        break;
+    }
+
+    blockEl.appendChild(content);
+    return blockEl;
+  }
+
+  function renderInputBlock(container, block, git) {
+    const input = document.createElement('input');
+    input.type = block.type === 'number' ? 'number' : 'text';
+    input.value = block.data || '';
+    input.placeholder = block.placeholder || '';
+
+    const saveBtn = document.createElement('button');
+    saveBtn.textContent = '保存';
+    saveBtn.className = 'save-btn';
+    saveBtn.addEventListener('click', () => {
+      vscode.postMessage({
+        type: 'saveWorkflowStep',
+        branch: git.currentBranch,
+        blockId: block.id,
+        data: input.value
+      });
+    });
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'input-wrapper';
+    wrapper.appendChild(input);
+    wrapper.appendChild(saveBtn);
+    container.appendChild(wrapper);
+  }
+
+  function renderToggleBlock(container, block, git) {
+    const label = document.createElement('label');
+    label.className = 'toggle-switch';
+
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = !!block.data;
+    input.addEventListener('change', () => {
+      vscode.postMessage({
+        type: 'saveWorkflowStep',
+        branch: git.currentBranch,
+        blockId: block.id,
+        data: input.checked
+      });
+    });
+
+    const slider = document.createElement('span');
+    slider.className = 'slider round';
+
+    label.appendChild(input);
+    label.appendChild(slider);
+    container.appendChild(label);
+  }
+
+  function renderComplexBlock(container, block, git) {
+    // Development Block
+    if (block.id === 'development') {
+      if (!git.isStandardBranch) {
+        const btn = document.createElement('button');
+        btn.textContent = '生成需求分支';
+        btn.className = 'action-btn primary';
+        btn.addEventListener('click', () => {
+          // We need PRD title and Meegle ID
+          // We assume they are in previous blocks (prd, meegleId)
+          // We can access them from global `workflowData`
+          const prdBlock = workflowData.blocks.find(b => b.id === 'prd');
+          const idBlock = workflowData.blocks.find(b => b.id === 'meegleId');
+
+          if (prdBlock && idBlock && prdBlock.data && idBlock.data) {
+            // Fetch title first
+            vscode.postMessage({
+              type: 'fetchPrdTitle',
+              url: prdBlock.data
+            });
+            // We need to wait for title? 
+            // The backend will send 'prdTitleFetched' message.
+            // We should handle that.
+            // For now, let's just trigger the fetch and handle the response in message listener.
+            // But we need to know it's for branch generation.
+            // Let's store a pending state?
+            window.pendingBranchGen = { meegleId: idBlock.data };
+          } else {
+            // Alert user
+            vscode.postMessage({ type: 'error', message: '请先填写 PRD 链接和 Meegle ID' });
+          }
+        });
+        container.appendChild(btn);
+      } else {
+        // Standard Branch: Show Git Ops
+        const actions = [
+          { id: 'commit', label: '生成 Commit Log' },
+          { id: 'push', label: '推代码' },
+          { id: 'sync', label: '同步 Master' }
+        ];
+
+        const group = document.createElement('div');
+        group.className = 'btn-group';
+
+        actions.forEach(action => {
+          const btn = document.createElement('button');
+          btn.textContent = action.label;
+          btn.className = 'action-btn';
+          btn.addEventListener('click', () => {
+            vscode.postMessage({
+              type: 'gitOperation',
+              operation: action.id
+            });
+          });
+          group.appendChild(btn);
+        });
+        container.appendChild(group);
+      }
+    }
+  }
+
+  function getStatusLabel(status) {
+    switch (status) {
+      case 'pending': return '待完成';
+      case 'completed': return '已完成';
+      default: return status;
+    }
   }
 
   function renderUiLocaleSwitcher(locales) {
     if (!uiLocaleSwitcher) {
       return;
     }
-    availableLocales = Array.isArray(locales) && locales.length > 0 ? locales : ['zh-CN', 'en-US'];
+    const availableLocales = Array.isArray(locales) && locales.length > 0 ? locales : ['zh-CN', 'en-US'];
     uiLocaleSwitcher.innerHTML = '';
     availableLocales.forEach((locale) => {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'locale-button';
       button.dataset.locale = locale;
-      button.textContent = locale === 'zh-CN' ? '中文' : 'English';
+      button.textContent = locale === 'zh-CN' ? 'Cn' : 'En';
       button.classList.toggle('active', locale === currentLocale);
       button.addEventListener('click', () => {
         if (locale === currentLocale) {
@@ -318,238 +499,6 @@
         vscode.postMessage({ type: 'switchLocale', language: locale });
       });
       uiLocaleSwitcher.appendChild(button);
-    });
-  }
-
-  function createLinkInput(step) {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'workflow-input';
-
-    const input = document.createElement('input');
-    input.type = 'url';
-    input.placeholder = step.placeholder || 'https://';
-    input.value = workflowState[step.id] || '';
-    input.addEventListener('input', () => {
-      workflowState[step.id] = input.value;
-      updateState({ workflowValues: workflowState });
-    });
-
-    wrapper.appendChild(input);
-    return wrapper;
-  }
-
-  function createNotesSection(step) {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'workflow-notes';
-
-    const casesField = document.createElement('textarea');
-    casesField.placeholder = getText('workflow.notesCasesPlaceholder') || 'Test coverage notes';
-    casesField.value = workflowState[`${step.id}:cases`] || '';
-    casesField.addEventListener('input', () => {
-      workflowState[`${step.id}:cases`] = casesField.value;
-      updateState({ workflowValues: workflowState });
-    });
-
-    const archiveField = document.createElement('textarea');
-    archiveField.placeholder = getText('workflow.notesArchivePlaceholder') || 'Release notes & archive records';
-    archiveField.value = workflowState[`${step.id}:archive`] || '';
-    archiveField.addEventListener('input', () => {
-      workflowState[`${step.id}:archive`] = archiveField.value;
-      updateState({ workflowValues: workflowState });
-    });
-
-    wrapper.appendChild(casesField);
-    wrapper.appendChild(archiveField);
-    return wrapper;
-  }
-
-  function createDiagramSection() {
-    const template = document.getElementById('gitWorkflowDiagram');
-    if (!template) {
-      return document.createElement('div');
-    }
-    return template.content.cloneNode(true);
-  }
-
-  function updateStageInfo(stage) {
-    if (!stage) {
-      return;
-    }
-    stageInfoCache[stage.id] = stage;
-    updateState({
-      currentStageId: stage.id,
-      stageInfoCache: { ...stageInfoCache },
-    });
-    currentStageId = stage.id;
-    document.querySelectorAll('.stage-node').forEach((node) => {
-      const stageKey = node.getAttribute('data-stage');
-      node.classList.toggle('active', stageKey === stage.id);
-    });
-    const title = document.getElementById('stageTitle');
-    const desc = document.getElementById('stageDesc');
-    const branchList = document.getElementById('stageBranches');
-    if (!title || !desc || !branchList) {
-      return;
-    }
-    title.textContent = stage.name;
-    desc.textContent = stage.description;
-    branchList.innerHTML = '';
-    stage.recommendedBranches.forEach((branch) => {
-      const li = document.createElement('li');
-      li.textContent = branch;
-      branchList.appendChild(li);
-    });
-    renderStageActions(stage);
-    renderStageActionStatus(stage.id);
-    updateStageCommands(stage);
-  }
-
-  function renderStageActions(stage) {
-    if (!stageActionsContainer) {
-      return;
-    }
-    stageActionsContainer.innerHTML = '';
-    if (!stage.actions || stage.actions.length === 0) {
-      const empty = document.createElement('p');
-      empty.className = 'stage-actions-empty';
-      empty.textContent = getText('stage.actionsEmpty') || 'No automations defined for this stage.';
-      stageActionsContainer.appendChild(empty);
-      return;
-    }
-    const state = stageActionState[stage.id];
-    stage.actions.forEach((action) => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'stage-action-button';
-      button.dataset.actionId = action.id;
-
-      const header = document.createElement('div');
-      header.className = 'stage-action-header';
-
-      const title = document.createElement('span');
-      title.className = 'stage-action-title';
-      title.textContent = action.label;
-      header.appendChild(title);
-
-      if (action.autoRunOnSelect) {
-        const badge = document.createElement('span');
-        badge.className = 'stage-action-badge';
-        badge.textContent = getText('stage.autoBadge') || 'Runs on stage select';
-        header.appendChild(badge);
-      }
-
-      button.appendChild(header);
-
-      const desc = document.createElement('span');
-      desc.className = 'stage-action-desc';
-      desc.textContent = action.description;
-      button.appendChild(desc);
-
-      if (state && state.actionId === action.id) {
-        button.classList.add(`status-${state.status}`);
-      }
-
-      button.addEventListener('click', () => {
-        vscode.postMessage({ type: 'executeStageAction', stageId: stage.id, stageActionId: action.id });
-      });
-
-      stageActionsContainer.appendChild(button);
-    });
-  }
-
-  function updateStageCommands(stage) {
-    if (!stageCommandsList || !stageCommandsEmpty) {
-      return;
-    }
-    stageCommandsList.innerHTML = '';
-    const commands = stage.commandHints || [];
-    if (commands.length === 0) {
-      stageCommandsList.classList.add('hidden');
-      stageCommandsEmpty.classList.remove('hidden');
-      return;
-    }
-    stageCommandsList.classList.remove('hidden');
-    stageCommandsEmpty.classList.add('hidden');
-
-    commands.forEach((command) => {
-      const item = document.createElement('li');
-      item.textContent = command;
-      stageCommandsList.appendChild(item);
-    });
-  }
-
-  function renderStageActionStatus(stageId) {
-    if (!stageActionStatus) {
-      return;
-    }
-    const state = stageActionState[stageId];
-    stageActionStatus.innerHTML = '';
-    if (!state) {
-      stageActionStatus.classList.add('hidden');
-      return;
-    }
-
-    stageActionStatus.classList.remove('hidden');
-
-    const badge = document.createElement('span');
-    badge.className = `stage-action-status-badge status-${state.status}`;
-    const statusLabels = {
-      success: getText('stage.status.success') || 'Succeeded',
-      error: getText('stage.status.error') || 'Failed',
-      cancelled: getText('stage.status.cancelled') || 'Cancelled',
-    };
-    badge.textContent = statusLabels[state.status] || statusLabels.error;
-    stageActionStatus.appendChild(badge);
-
-    const summary = document.createElement('p');
-    summary.className = 'stage-action-status-summary';
-    summary.textContent = state.message;
-    stageActionStatus.appendChild(summary);
-
-    const meta = document.createElement('p');
-    meta.className = 'stage-action-status-meta';
-    const timestamp = new Date(state.timestamp).toLocaleString(currentLocale || 'en-US', {
-      hour12: currentLocale === 'en-US',
-    });
-    meta.textContent = formatText(getText('stage.status.executedAt'), { timestamp }) || timestamp;
-    stageActionStatus.appendChild(meta);
-
-    if (state.executedCommands && state.executedCommands.length > 0) {
-      const listTitle = document.createElement('p');
-      listTitle.className = 'stage-action-status-subtitle';
-      listTitle.textContent = getText('stage.status.commandsTitle') || 'Executed commands:';
-      stageActionStatus.appendChild(listTitle);
-
-      const list = document.createElement('ul');
-      list.className = 'stage-action-status-commands';
-      state.executedCommands.forEach((command) => {
-        const item = document.createElement('li');
-        item.textContent = command;
-        list.appendChild(item);
-      });
-      stageActionStatus.appendChild(list);
-    }
-  }
-
-  function attachStageListeners() {
-    document.querySelectorAll('.stage-node').forEach((node) => {
-      node.addEventListener('click', () => {
-        const stageId = node.getAttribute('data-stage');
-        document.querySelectorAll('.stage-node').forEach((el) => el.classList.remove('active'));
-        node.classList.add('active');
-        vscode.postMessage({ type: 'switchStage', stageId });
-      });
-    });
-  }
-
-  function attachBranchListeners() {
-    document.querySelectorAll('.branch-node').forEach((node) => {
-      node.addEventListener('click', () => {
-        const branch = node.getAttribute('data-branch');
-        document.querySelectorAll('.branch-node').forEach((el) => el.classList.remove('active'));
-        node.classList.add('active');
-        vscode.postMessage({ type: 'checkoutBranch', branch });
-      });
     });
   }
 
@@ -562,15 +511,12 @@
       const badge = document.createElement('div');
       badge.className = 'auth-badge';
       badge.classList.toggle('active', item.authorized);
+      badge.title = item.name;
 
       const icon = document.createElement('img');
       icon.src = item.iconPath;
       icon.alt = item.name;
       badge.appendChild(icon);
-
-      const label = document.createElement('span');
-      label.textContent = item.name;
-      badge.appendChild(label);
 
       authBadges.appendChild(badge);
     });
@@ -585,63 +531,37 @@
         renderUiLocaleSwitcher(message.availableLocales);
         renderDocList(message.docs || []);
         renderInstructions(message.instructions || []);
-        renderWorkflow(message.workflow || []);
         updateAuthBadges(message.authorizations || []);
-        {
-          const persistedDoc = docs.find((doc) => doc.id === currentDocId);
-          if (persistedDoc) {
-            const language =
-              currentLanguage && persistedDoc.languages.some((lang) => lang.language === currentLanguage)
-                ? currentLanguage
-                : persistedDoc.defaultLanguage;
-            selectDoc(persistedDoc.id, language);
-          } else if (message.initialDocId) {
-            selectDoc(message.initialDocId, message.initialLanguage);
-            if (message.initialContent && mcpContent) {
-              mcpContent.innerHTML = message.initialContent;
-            }
-          } else if (docs[0]) {
-            selectDoc(docs[0].id, docs[0].defaultLanguage);
-          }
-        }
-        if (message.initialStage) {
-          updateStageInfo(message.initialStage);
-        } else if (message.initialStageId && stageInfoCache[message.initialStageId]) {
-          updateStageInfo(stageInfoCache[message.initialStageId]);
+
+        gitInfo = message.gitInfo;
+        workflowData = message.workflowData;
+        if (gitInfo && workflowData) {
+          renderWorkflow(workflowData, gitInfo);
         }
         break;
-      case 'docContent':
-        if (currentDocId === message.id && mcpContent) {
-          currentLanguage = message.language || currentLanguage;
-          updateState({ selectedLanguage: currentLanguage });
-          updateLanguageActive();
-          mcpContent.innerHTML = message.html;
+      case 'workflowUpdated':
+        workflowData = message.workflow;
+        if (gitInfo && workflowData) {
+          renderWorkflow(workflowData, gitInfo);
         }
         break;
-      case 'stageInfo':
-        updateStageInfo(message.stage);
+      case 'gitInfoUpdated':
+        gitInfo = message.gitInfo;
+        if (gitInfo && workflowData) {
+          renderWorkflow(workflowData, gitInfo);
+        }
         break;
-      case 'stageActionStatus':
-        if (message.stageId) {
-          stageActionState[message.stageId] = {
-            status: message.status,
-            message: message.message,
-            actionId: message.actionId,
-            executedCommands: message.executedCommands || [],
-            timestamp: Date.now(),
-          };
-          updateState({ stageActionState: { ...stageActionState } });
-          const cachedStage = stageInfoCache[message.stageId];
-          if (cachedStage && currentStageId === message.stageId) {
-            renderStageActions(cachedStage);
-          }
-          if (currentStageId === message.stageId) {
-            renderStageActionStatus(message.stageId);
-          }
-          if (cachedStage) {
-            stageInfoCache[message.stageId] = cachedStage;
-            updateState({ stageInfoCache: { ...stageInfoCache } });
-          }
+      case 'prdTitleFetched':
+        if (window.pendingBranchGen) {
+          const { meegleId } = window.pendingBranchGen;
+          const prdTitle = message.title;
+          // Trigger branch generation
+          vscode.postMessage({
+            type: 'generateBranch',
+            meegleId: meegleId,
+            prdTitle: prdTitle
+          });
+          delete window.pendingBranchGen;
         }
         break;
       case 'themeChanged':

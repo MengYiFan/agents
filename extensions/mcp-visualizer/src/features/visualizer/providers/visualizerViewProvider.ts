@@ -16,6 +16,9 @@ import { executeInstructionAction } from '../../../services/instructions/instruc
 import { getAuthorizationStatuses } from '../../../services/auth/authorizationStatusService';
 import { getUiText, resolveSupportedLanguage } from '../../../shared/localization/i18n';
 import type { UiText } from '../../../shared/localization/i18n';
+import { GitService } from '../../../services/git/gitService';
+import { WorkflowService } from '../../../services/workflow/workflowService';
+import { AgentService } from '../../../services/mcp/agentService';
 
 interface WebviewMessage {
   type:
@@ -25,13 +28,16 @@ interface WebviewMessage {
     | 'switchStage'
     | 'switchLocale'
     | 'executeInstruction'
-    | 'executeStageAction';
+    | 'executeStageAction'
+    | 'saveWorkflowLink';
   docId?: string;
   language?: SupportedLanguage;
   branch?: string;
   stageId?: string;
   instructionId?: string;
   stageActionId?: string;
+  workflowStepId?: string;
+  link?: string;
 }
 
 export class VisualizerViewProvider implements vscode.WebviewViewProvider {
@@ -47,9 +53,14 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
 
   private currentStageId?: string;
 
+  private gitService: GitService;
+  private workflowService: WorkflowService;
+
   constructor(private readonly context: vscode.ExtensionContext) {
     this.locale = resolveSupportedLanguage(vscode.env.language);
     this.uiText = getUiText(this.locale);
+    this.gitService = new GitService();
+    this.workflowService = new WorkflowService(context);
 
     this.context.subscriptions.push(
       vscode.window.onDidChangeActiveColorTheme((theme) => {
@@ -62,7 +73,6 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
     this.view = webviewView;
     webviewView.webview.options = {
       enableScripts: true,
-      retainContextWhenHidden: true,
       localResourceRoots: [
         vscode.Uri.joinPath(this.context.extensionUri, 'dist'),
         vscode.Uri.joinPath(this.context.extensionUri, 'assets'),
@@ -133,6 +143,13 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
             }
           }
           break;
+          break;
+        case 'saveWorkflowLink':
+          if (message.branch && message.workflowStepId && message.link !== undefined) {
+            await this.workflowService.saveLink(message.branch, message.workflowStepId, message.link);
+            await this.sendInitialData(); // Refresh to show updated data
+          }
+          break;
         default:
           break;
       }
@@ -144,18 +161,49 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
     const searchPaths =
       vscode.workspace.getConfiguration('mcpVisualizer').get<string[]>('docSearchPaths') ??
       DEFAULT_DOC_DIRECTORIES;
-    this.docs = await collectDocs(workspaceRoot, searchPaths);
+    
+    // Use AgentService to fetch agents
+    const agentService = new AgentService();
+    try {
+        this.docs = await agentService.getAgents();
+    } catch (error) {
+        console.error('Failed to fetch agents:', error);
+        this.docs = [];
+    }
+
+    // Fallback to file scanning if no agents found (optional, or just replace entirely)
+    if (this.docs.length === 0) {
+        try {
+            this.docs = await collectDocs(workspaceRoot, searchPaths);
+        } catch (error) {
+            console.error('Failed to collect docs:', error);
+            this.docs = [];
+        }
+    }
+
     const firstDoc: McpDocEntry | undefined = this.docs[0];
     const initialVariant = firstDoc
       ? this.selectVariant(firstDoc, firstDoc.defaultLanguage)
       : undefined;
-    const initialContent = initialVariant ? await loadDocContent(initialVariant.filePath) : '';
+    
+    // For API-sourced agents, content is already in the variant
+    const initialContent = initialVariant 
+        ? (initialVariant.content || await loadDocContent(initialVariant.filePath)) 
+        : '';
 
     const webview = this.view?.webview;
     const initialStage = this.resolveInitialStage();
     if (initialStage?.id) {
       this.currentStageId = initialStage.id;
     }
+
+    // Get git info
+    const gitService = new GitService(workspaceRoot || '');
+    const gitInfo = await gitService.getGitInfo();
+
+    // Get workflow data
+    const workflowService = new WorkflowService(this.context);
+    const workflowData = workflowService.getWorkflowData(gitInfo.currentBranch);
 
     this.postMessage({
       type: 'initialData',
@@ -168,6 +216,8 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
           language: variant.language,
           label: variant.label,
         })),
+        // Pass content directly if available (for API agents)
+        content: doc.variants[0]?.content
       })),
       initialDocId: firstDoc?.id,
       initialLanguage: initialVariant?.language ?? firstDoc?.defaultLanguage,
@@ -184,10 +234,10 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
       authorizations: webview ? getAuthorizationStatuses(webview, this.context.extensionUri) : [],
       locale: this.locale,
       uiText: this.uiText,
-      availableLocales: this.availableLocales,
-      initialStageId: initialStage?.id,
-      initialStage,
+      availableLocales: ['zh-CN', 'en-US'],
       theme: this.getThemeInfo(),
+      gitInfo,
+      workflowData,
     });
   }
 

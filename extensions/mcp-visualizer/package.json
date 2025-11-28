@@ -1,6 +1,6 @@
 {
   "name": "mcp-visualizer",
-  "displayName": "MCP 可视化助手",
+  "displayName": "可视化助手",
   "description": "提供 Mastra MCP 功能文档查看与 Git 分支流程可视化操作的 VS Code 扩展。",
   "version": "0.0.1",
   "publisher": "mastra-labs",

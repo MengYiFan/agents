@@ -67,7 +67,7 @@ const FALLBACK_LANGUAGE: SupportedLanguage = 'en-US';
 const UI_TEXTS: Record<SupportedLanguage, UiText> = {
   'zh-CN': {
     header: {
-      title: 'MCP 可视化助手',
+      title: '可视化助手',
       subtitle: '串联需求、规范与分支，让协作一目了然。',
     },
     tabs: {
