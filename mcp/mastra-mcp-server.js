@@ -178,7 +178,7 @@ function registerAgentTool(agentId, info) {
           )
           .optional(),
         messages: z
-          .array(z.any())
+          .array(z.object({ role: z.string(), content: z.string() }).passthrough())
           .describe(
             "Optional OpenAI-style messages array; if missing, `prompt` is used.",
           )

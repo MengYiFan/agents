@@ -470,8 +470,14 @@ export class GrafanaMcpClient {
     return response;
   }
 
-  async searchDashboards(query: string): Promise<GrafanaSearchResult[]> {
-    const response = await this.authorizedFetch(`/api/search?query=${encodeURIComponent(query)}`);
+  async searchDashboards(query: string, starred = false): Promise<GrafanaSearchResult[]> {
+    const params = new URLSearchParams({ query });
+
+    if (starred) {
+      params.set("starred", "true");
+    }
+
+    const response = await this.authorizedFetch(`/api/search?${params.toString()}`);
 
     if (!response.ok) {
       const message = await this.safeReadError(response);

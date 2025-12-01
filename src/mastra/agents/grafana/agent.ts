@@ -22,6 +22,7 @@ interface GrafanaCredentialsInput {
 interface GrafanaOperationInput {
   action: GrafanaAction;
   query?: string;
+  starred?: boolean;
   uid?: string;
   panelId?: number;
   credentials?: GrafanaCredentialsInput;
@@ -160,6 +161,10 @@ const grafanaTool = {
       .string()
       .optional()
       .describe("搜索仪表盘时使用的关键字。仅在 action=searchDashboards 时有效。"),
+    starred: z
+      .boolean()
+      .optional()
+      .describe("是否仅搜索已收藏的仪表盘。仅在 action=searchDashboards 时有效。"),
     uid: z.string().optional().describe("仪表盘的唯一 UID。"),
     panelId: z.number().optional().describe("需要解析的面板 ID，仅在 action=getPanel 时必填。"),
     credentials: z
@@ -170,21 +175,19 @@ const grafanaTool = {
         googleTargetAudience: z.string().optional(),
         serviceAccountJson: z.string().optional(),
       })
-      .optional()
       .describe(
-        "可选的临时凭据覆盖项，可传入 Grafana 基础地址与谷歌服务账号密钥信息（clientEmail、privateKey、targetAudience 或完整 serviceAccountJson）。",
+        "**通常不需要提供**。仅在需要覆盖环境变量配置时使用。可传入 Grafana 基础地址与谷歌服务账号密钥信息。",
       ),
   }),
-  execute: async ({ action, query, uid, panelId, credentials }: GrafanaOperationInput): Promise<GrafanaOperationResult> => {
+  execute: async ({ action, query, starred, uid, panelId, credentials }: GrafanaOperationInput): Promise<GrafanaOperationResult> => {
     const client = getGrafanaClient(credentials);
 
     switch (action) {
       case "searchDashboards": {
-        if (!query) {
-          throw new Error("搜索仪表盘需要提供 query 参数。");
-        }
-
-        const results = await client.searchDashboards(query);
+        // query is optional if starred is true
+        const searchQuery = query ?? "";
+        
+        const results = await client.searchDashboards(searchQuery, starred);
         return { action, results };
       }
       case "getDashboard": {
@@ -223,7 +226,8 @@ export const grafanaMcpAgent = new Agent({
     "封装 Grafana MCP 能力，能够通过谷歌 IAP 自动完成登录并检索关键监控信息。\n\n" +
     "你是一名熟悉 Grafana 的内部平台助手，能够基于结构化指令调用 grafanaMcp 工具执行搜索、读取仪表盘与面板配置等任务。\n\n" +
     "认证说明：\n" +
-    "本 Agent 支持 Google Application Default Credentials (ADC)。如果未配置具体的服务账号信息，请确保宿主环境已通过 `gcloud auth application-default login` 完成登录。\n\n" +
+    "本 Agent 默认使用环境变量中的配置（支持 ADC）。**请勿要求用户提供 credentials 参数**，除非用户明确表示要覆盖默认配置。\n" +
+    "如果用户未提供任何参数直接询问，尝试列出已收藏的仪表盘（action=searchDashboards, starred=true）。\n\n" +
     "快捷指令支持：\n" +
     "1. `check [仪表盘名称或UID]`: 搜索并查看仪表盘详情。\n" +
     "2. `info [仪表盘UID]`: 获取仪表盘的完整 JSON 定义。\n" +
