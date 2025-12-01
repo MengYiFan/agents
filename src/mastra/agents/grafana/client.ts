@@ -1,19 +1,15 @@
 import { Buffer } from "node:buffer";
-import { JWT } from "google-auth-library";
+import { GoogleAuth } from "google-auth-library";
 
 export interface GrafanaGoogleAuthConfig {
   /**
-   * Service account email used to mint Google ID tokens for the IAP-protected
-   * Grafana instance.
+   * Optional service account email. If omitted, ADC will attempt to find credentials.
    */
-  clientEmail: string;
+  clientEmail?: string;
   /**
-   * Private key paired with the service account email. The key should include
-   * the PEM header/footer and line breaks. When sourcing the key from
-   * environment variables replace escaped newlines ("\\n") with actual
-   * newlines before passing it to the client.
+   * Optional private key. If omitted, ADC will attempt to find credentials.
    */
-  privateKey: string;
+  privateKey?: string;
   /**
    * Optional target audience configured for the Cloud IAP resource. When not
    * provided the Grafana base URL is used as the audience value.
@@ -204,17 +200,26 @@ const decodeJwtExpiration = (token: string): number | undefined => {
 };
 
 class GoogleIapTokenManager {
-  private readonly client: JWT;
+  private readonly auth: GoogleAuth;
+  private client?: any;
 
   private cachedToken?: CachedToken;
 
   constructor(
     private readonly config: Required<GrafanaGoogleAuthConfig> & { refreshMarginMs: number },
   ) {
-    this.client = new JWT({
-      email: config.clientEmail,
-      key: config.privateKey,
-    });
+    const authOptions: any = {
+      scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+    };
+
+    if (config.clientEmail && config.privateKey) {
+      authOptions.credentials = {
+        client_email: config.clientEmail,
+        private_key: config.privateKey,
+      };
+    }
+
+    this.auth = new GoogleAuth(authOptions);
   }
 
   async getIdToken(): Promise<string> {
@@ -224,6 +229,16 @@ class GoogleIapTokenManager {
       return cached.token;
     }
 
+    if (!this.client) {
+      this.client = await this.auth.getIdTokenClient(this.config.targetAudience);
+    }
+
+    // The getIdTokenClient returns an IdTokenClient which has a request method
+    // that automatically adds the Authorization header. However, we need the raw token
+    // to pass to Grafana.
+    // The GoogleAuth library doesn't expose a simple "getToken" for IAP in the same way JWT did.
+    // But IdTokenClient has a `fetchIdToken` method similar to JWT.
+    
     const token = await this.client.fetchIdToken(this.config.targetAudience);
     const expiresAt = decodeJwtExpiration(token);
 
@@ -270,8 +285,8 @@ export class GrafanaMcpClient {
     const targetAudience = config.googleAuth.targetAudience ?? this.baseUrl;
 
     this.tokenManager = new GoogleIapTokenManager({
-      clientEmail: config.googleAuth.clientEmail,
-      privateKey: config.googleAuth.privateKey,
+      clientEmail: config.googleAuth.clientEmail ?? "",
+      privateKey: config.googleAuth.privateKey ?? "",
       targetAudience,
       refreshMarginMs: this.refreshMarginMs,
     });

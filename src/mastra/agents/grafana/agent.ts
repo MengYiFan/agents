@@ -7,7 +7,7 @@ import {
   type GrafanaSearchResult,
   type GrafanaDashboardResponse,
   type GrafanaDatasource,
-} from "../../integrations/grafanaMcp.js";
+} from "./client.js";
 
 type GrafanaAction = "searchDashboards" | "getDashboard" | "listDatasources" | "getPanel";
 
@@ -110,11 +110,12 @@ const resolveGrafanaConfig = (credentials?: GrafanaCredentialsInput): GrafanaMcp
     privateKey = privateKey ?? parsed.private_key;
   }
 
-  if (!clientEmail || !privateKey) {
-    throw new Error(
-      "Grafana Google service account credentials are incomplete. Provide client email and private key via the tool input, environment variables, or a service account JSON blob.",
-    );
-  }
+  // ADC 模式下允许 clientEmail 与 privateKey 为空。
+  // if (!clientEmail || !privateKey) {
+  //   throw new Error(
+  //     "Grafana Google service account credentials are incomplete. Provide client email and private key via the tool input, environment variables, or a service account JSON blob.",
+  //   );
+  // }
 
   const targetAudience =
     credentials?.googleTargetAudience ??
@@ -126,7 +127,7 @@ const resolveGrafanaConfig = (credentials?: GrafanaCredentialsInput): GrafanaMcp
     baseUrl,
     googleAuth: {
       clientEmail,
-      privateKey: normalizePrivateKey(privateKey),
+      privateKey: privateKey ? normalizePrivateKey(privateKey) : undefined,
       targetAudience: targetAudience ?? baseUrl,
     },
   };
@@ -218,9 +219,16 @@ import { geminiModel } from "../../models.js";
 export const grafanaMcpAgent = new Agent({
   id: "grafana-mcp-agent",
   name: "grafana-mcp-agent",
-  instructions: "封装 Grafana MCP 能力，能够通过谷歌 IAP 自动完成登录并检索关键监控信息。",
-  system:
-    "你是一名熟悉 Grafana 的内部平台助手，能够基于结构化指令调用 grafanaMcp 工具执行搜索、读取仪表盘与面板配置等任务。",
+  instructions:
+    "封装 Grafana MCP 能力，能够通过谷歌 IAP 自动完成登录并检索关键监控信息。\n\n" +
+    "你是一名熟悉 Grafana 的内部平台助手，能够基于结构化指令调用 grafanaMcp 工具执行搜索、读取仪表盘与面板配置等任务。\n\n" +
+    "认证说明：\n" +
+    "本 Agent 支持 Google Application Default Credentials (ADC)。如果未配置具体的服务账号信息，请确保宿主环境已通过 `gcloud auth application-default login` 完成登录。\n\n" +
+    "快捷指令支持：\n" +
+    "1. `check [仪表盘名称或UID]`: 搜索并查看仪表盘详情。\n" +
+    "2. `info [仪表盘UID]`: 获取仪表盘的完整 JSON 定义。\n" +
+    "3. `list`: 列出所有数据源。\n\n" +
+    "如果用户提供的查询看起来像 UID（例如包含短横线或长度固定），优先尝试按 UID 获取；否则作为关键字搜索。",
   model: geminiModel,
   tools: { grafanaMcp: grafanaTool },
 });

@@ -6,7 +6,7 @@ import { testPromptAgent } from "./examples/testPromptAgent.js";
 import { codeReviewAgent } from "./quality/codeReviewAgent.js";
 import { codeGuidelinesMcp } from "./quality/codeGuidelinesMcp.js";
 import { gitMcpAgent } from "./integrations/gitMcpAgent.js";
-import { grafanaMcpAgent } from "./integrations/grafanaMcpAgent.js";
+import { grafanaMcpAgent } from "./grafana/index.js";
 import { sentryMcpAgent } from "./integrations/sentryMcpAgent.js";
 
 export const registeredAgents: Record<string, Agent> = {
