@@ -1,98 +1,128 @@
 import * as vscode from 'vscode';
 
-export interface WorkflowBlock {
+export type WorkflowStageId = 'basic' | 'development' | 'testing' | 'acceptance' | 'release';
+
+export type WorkflowFieldType = 'link' | 'number' | 'text';
+
+export type WorkflowStatus = 'pending' | 'completed';
+
+export interface WorkflowField {
   id: string;
-  title: string;
-  type: 'input' | 'number' | 'toggle' | 'complex';
+  label: string;
+  type: WorkflowFieldType;
   required: boolean;
-  status: 'pending' | 'completed';
-  data: any;
-  isVisible: boolean;
-  placeholder?: string;
-  description?: string;
+  value?: string;
+}
+
+export interface WorkflowStage {
+  id: WorkflowStageId;
+  title: string;
+  status: WorkflowStatus;
+  completedAt?: string;
+  fields?: WorkflowField[];
 }
 
 export interface WorkflowData {
-  blocks: WorkflowBlock[];
+  stages: WorkflowStage[];
+  activeStage: WorkflowStageId;
+  startedFromNonDev: boolean;
 }
 
-const INITIAL_BLOCKS: WorkflowBlock[] = [
-    { id: 'prd', title: 'PRD', type: 'input', required: true, status: 'pending', data: null, isVisible: true, placeholder: '请输入 PRD 链接', description: '产品需求文档链接' },
-    { id: 'meegleId', title: 'Meegle ID', type: 'number', required: true, status: 'pending', data: null, isVisible: false, placeholder: '请输入 Meegle ID', description: '需求 ID' },
-    { id: 'design', title: 'Design Draft', type: 'input', required: true, status: 'pending', data: null, isVisible: false, placeholder: '请输入设计稿链接', description: 'UI/UX 设计稿' },
-    { id: 'tech', title: 'Tech Scheme', type: 'input', required: false, status: 'pending', data: null, isVisible: false, placeholder: '请输入技术方案链接', description: '技术方案文档 (可选)' },
-    { id: 'development', title: 'Development', type: 'complex', required: true, status: 'pending', data: null, isVisible: false, description: '代码开发与分支管理' },
-    { id: 'testing', title: 'Testing', type: 'toggle', required: true, status: 'pending', data: false, isVisible: false, description: '自测与 QA 测试' },
-    { id: 'acceptance', title: 'Acceptance', type: 'toggle', required: true, status: 'pending', data: false, isVisible: false, description: '产品验收' },
-    { id: 'completion', title: 'Completion', type: 'toggle', required: true, status: 'pending', data: false, isVisible: false, description: '上线完成' }
+const STORAGE_KEY = 'mcp-workflow-data-v2';
+
+// 初始化阶段定义，控制必填项和步骤顺序
+const createInitialStages = (): WorkflowStage[] => [
+  {
+    id: 'basic',
+    title: '基本信息',
+    status: 'pending',
+    fields: [
+      { id: 'prd', label: 'PRD', type: 'link', required: true },
+      { id: 'design', label: '设计稿', type: 'link', required: false },
+      { id: 'meegleId', label: 'Meege ID', type: 'number', required: true },
+      { id: 'backendPlan', label: '后端技术方案', type: 'link', required: false },
+      { id: 'frontendPlan', label: '前端技术方案', type: 'link', required: false },
+    ],
+  },
+  { id: 'development', title: '开发阶段', status: 'pending' },
+  { id: 'testing', title: '测试阶段', status: 'pending' },
+  { id: 'acceptance', title: '验收阶段', status: 'pending' },
+  { id: 'release', title: '上线阶段', status: 'pending' },
 ];
 
 export class WorkflowService {
   private context: vscode.ExtensionContext;
-  private storageKey = 'mcp-workflow-data';
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
   }
 
   public getWorkflowData(branch: string): WorkflowData {
-      const allData = this.context.workspaceState.get<Record<string, WorkflowData>>(this.storageKey) || {};
-      if (!allData[branch]) {
-          // Return deep copy of initial blocks
-          return { blocks: JSON.parse(JSON.stringify(INITIAL_BLOCKS)) };
-      }
-      return allData[branch];
+    const store = this.context.workspaceState.get<Record<string, WorkflowData>>(STORAGE_KEY) || {};
+    if (!store[branch]) {
+      store[branch] = this.createInitialWorkflow();
+      void this.context.workspaceState.update(STORAGE_KEY, store);
+    }
+
+    return store[branch];
   }
 
-  public async saveWorkflowStep(branch: string, blockId: string, data: any): Promise<void> {
-      const allData = this.context.workspaceState.get<Record<string, WorkflowData>>(this.storageKey) || {};
-      
-      if (!allData[branch]) {
-          allData[branch] = { blocks: JSON.parse(JSON.stringify(INITIAL_BLOCKS)) };
-      }
+  public async startWorkflow(branch: string): Promise<WorkflowData> {
+    const store = this.context.workspaceState.get<Record<string, WorkflowData>>(STORAGE_KEY) || {};
+    const workflow = store[branch] ?? this.createInitialWorkflow();
+    workflow.startedFromNonDev = true;
+    store[branch] = workflow;
+    await this.context.workspaceState.update(STORAGE_KEY, store);
 
-      const blocks = allData[branch].blocks;
-      const blockIndex = blocks.findIndex(b => b.id === blockId);
-      
-      if (blockIndex !== -1) {
-          blocks[blockIndex].data = data;
-          // Update status based on data
-          if (data) {
-              blocks[blockIndex].status = 'completed';
-          } else {
-              blocks[blockIndex].status = 'pending';
-          }
-
-          // Update visibility of subsequent blocks
-          this.updateVisibility(blocks);
-
-          await this.context.workspaceState.update(this.storageKey, allData);
-      }
+    return workflow;
   }
 
-  private updateVisibility(blocks: WorkflowBlock[]) {
-      // Logic: Block N is visible if Block N-1 is visible AND (Block N-1 is completed OR Block N-1 is optional)
-      
-      // First block always visible
-      blocks[0].isVisible = true;
-
-      for (let i = 1; i < blocks.length; i++) {
-          const prevBlock = blocks[i - 1];
-          
-          if (prevBlock.isVisible) {
-              if (prevBlock.status === 'completed' || !prevBlock.required) {
-                  blocks[i].isVisible = true;
-              } else {
-                  blocks[i].isVisible = false;
-              }
-          } else {
-              blocks[i].isVisible = false;
-          }
+  public async saveField(branch: string, stageId: WorkflowStageId, fieldId: string, value: string): Promise<WorkflowData> {
+    const store = this.context.workspaceState.get<Record<string, WorkflowData>>(STORAGE_KEY) || {};
+    const workflow = store[branch] ?? this.createInitialWorkflow();
+    const targetStage = workflow.stages.find((item) => item.id === stageId);
+    if (targetStage?.fields) {
+      const targetField = targetStage.fields.find((field) => field.id === fieldId);
+      if (targetField) {
+        targetField.value = value;
       }
+    }
+    store[branch] = workflow;
+    await this.context.workspaceState.update(STORAGE_KEY, store);
+
+    return workflow;
   }
 
-  // Helper for legacy support or specific link saving
-  public async saveLink(branch: string, stepId: string, link: string): Promise<void> {
-      await this.saveWorkflowStep(branch, stepId, link);
+  public async completeStage(branch: string, stageId: WorkflowStageId): Promise<WorkflowData> {
+    const store = this.context.workspaceState.get<Record<string, WorkflowData>>(STORAGE_KEY) || {};
+    const workflow = store[branch] ?? this.createInitialWorkflow();
+    const targetStage = workflow.stages.find((item) => item.id === stageId);
+    if (targetStage && targetStage.status !== 'completed') {
+      targetStage.status = 'completed';
+      targetStage.completedAt = new Date().toISOString();
+      const nextStage = this.findNextStage(workflow, stageId);
+      workflow.activeStage = nextStage?.id ?? stageId;
+    }
+    store[branch] = workflow;
+    await this.context.workspaceState.update(STORAGE_KEY, store);
+
+    return workflow;
+  }
+
+  private createInitialWorkflow(): WorkflowData {
+    const stages = createInitialStages();
+
+    return { stages, activeStage: 'basic', startedFromNonDev: false };
+  }
+
+  private findNextStage(workflow: WorkflowData, currentId: WorkflowStageId): WorkflowStage | undefined {
+    const currentIndex = workflow.stages.findIndex((item) => item.id === currentId);
+    if (currentIndex < 0) {
+
+      return undefined;
+    }
+    const nextStage = workflow.stages.slice(currentIndex + 1).find((item) => item.status !== 'completed');
+
+    return nextStage;
   }
 }

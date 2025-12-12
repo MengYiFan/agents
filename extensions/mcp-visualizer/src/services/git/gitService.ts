@@ -1,18 +1,24 @@
 import * as cp from 'child_process';
 import * as vscode from 'vscode';
 
+export type BranchType = 'development' | 'release' | 'other';
+
 export interface GitInfo {
   userName: string;
   currentBranch: string;
-  isStandardBranch: boolean;
+  branchType: BranchType;
   featureId?: string;
+  hasUncommitted: boolean;
 }
 
 export class GitService {
-  private workspaceRoot: string | undefined;
-  private _onDidBranchChange = new vscode.EventEmitter<void>();
-  public readonly onDidBranchChange = this._onDidBranchChange.event;
-  private watcher: vscode.FileSystemWatcher | undefined;
+  private workspaceRoot?: string;
+
+  private branchWatcher?: vscode.FileSystemWatcher;
+
+  private branchChangeEmitter = new vscode.EventEmitter<void>();
+
+  public readonly onDidBranchChange = this.branchChangeEmitter.event;
 
   constructor() {
     const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -22,128 +28,168 @@ export class GitService {
     }
   }
 
-  private initWatcher() {
-    if (!this.workspaceRoot) return;
-    
-    // Watch .git/HEAD for branch changes
-    const pattern = new vscode.RelativePattern(this.workspaceRoot, '.git/HEAD');
-    this.watcher = vscode.workspace.createFileSystemWatcher(pattern);
-    
-    this.watcher.onDidChange(() => {
-      this._onDidBranchChange.fire();
-    });
-    this.watcher.onDidCreate(() => {
-        this._onDidBranchChange.fire();
-    });
-  }
-
-  public dispose() {
-      this.watcher?.dispose();
-      this._onDidBranchChange.dispose();
+  public dispose(): void {
+    this.branchWatcher?.dispose();
+    this.branchChangeEmitter.dispose();
   }
 
   public async getGitInfo(): Promise<GitInfo> {
     if (!this.workspaceRoot) {
+
       return {
         userName: '',
         currentBranch: '',
-        isStandardBranch: false,
+        branchType: 'other',
+        featureId: undefined,
+        hasUncommitted: false,
       };
     }
 
     const userName = await this.execGit(['config', 'user.name']);
-    const currentBranch = await this.execGit(['rev-parse', '--abbrev-ref', 'HEAD']);
-
-    const { isStandard, featureId } = this.analyzeBranch(currentBranch, userName);
+    const currentBranch = await this.getCurrentBranch();
+    const { type, featureId } = this.analyzeBranch(currentBranch);
+    const hasUncommitted = await this.hasUncommittedChanges();
 
     return {
       userName,
       currentBranch,
-      isStandardBranch: isStandard,
+      branchType: type,
       featureId,
+      hasUncommitted,
     };
   }
 
-  private analyzeBranch(branchName: string, userName: string): { isStandard: boolean; featureId?: string } {
-    // Pattern: {user}/{type}/{id}***
-    // e.g. mishzhong/feat/123-test -> user=mishzhong, type=feat, id=123
-    if (!branchName || !userName) {
-        return { isStandard: false };
+  public async generateDevelopmentBranch(baseBranch: string, meegleId: string, prdBrief: string): Promise<string> {
+    const safeBrief = prdBrief.replace(/[^a-z0-9-]/gi, '-').replace(/-+/g, '-').toLowerCase();
+    const branchName = `feature/${meegleId}-${safeBrief || 'feature'}`;
+
+    await this.execGit(['fetch', 'origin', baseBranch]);
+    await this.execGit(['checkout', '-B', branchName, `origin/${baseBranch}`]);
+
+    return branchName;
+  }
+
+  public async stashChanges(): Promise<void> {
+    await this.execGit(['stash']);
+  }
+
+  public async resetWorkingTree(): Promise<void> {
+    await this.execGit(['reset', '--hard', 'HEAD']);
+  }
+
+  public async hasUncommittedChanges(): Promise<boolean> {
+    const status = await this.execGit(['status', '--porcelain']);
+
+    return !!status;
+  }
+
+  public async runYummyCommit(): Promise<void> {
+    await this.execShellCommand('yummy commit');
+  }
+
+  public async createTag(tagName: string): Promise<void> {
+    await this.execGit(['tag', '-a', tagName, '-m', tagName]);
+    await this.execGit(['push', 'origin', tagName]);
+  }
+
+  public async mergeToRelease(targetRelease: string, sourceBranch: string): Promise<{ success: boolean; message?: string }> {
+    try {
+      await this.execGit(['fetch', 'origin', targetRelease]);
+      await this.execGit(['checkout', targetRelease]);
+      await this.execGit(['merge', sourceBranch]);
+      await this.execGit(['push', 'origin', targetRelease]);
+
+      return { success: true };
+    } catch (error) {
+      const err = error as { message?: string };
+
+      return { success: false, message: err.message };
     }
-    const parts = branchName.split('/');
-    if (parts.length >= 3) {
-      const featurePart = parts[2];
-      const match = featurePart.match(/^(\d+)/);
-      if (match) {
-        return {
-          isStandard: true,
-          featureId: match[1],
-        };
-      }
+  }
+
+  public async listReleaseBranches(): Promise<string[]> {
+    const output = await this.execGit(['ls-remote', '--heads', 'origin', 'release/*']);
+    const lines = output.split('\n').filter(Boolean);
+    const names = lines
+      .map((line) => line.split('\t')[1])
+      .filter(Boolean)
+      .map((ref) => ref.replace('refs/heads/', ''))
+      .filter((name) => /^release\/\d{4}\.w\d+\.\d+$/.test(name));
+
+    return Array.from(new Set(names));
+  }
+
+  private initWatcher(): void {
+    if (!this.workspaceRoot) {
+      return;
     }
 
-    return {
-      isStandard: false,
-    };
+    const pattern = new vscode.RelativePattern(this.workspaceRoot, '.git/HEAD');
+    this.branchWatcher = vscode.workspace.createFileSystemWatcher(pattern);
+    this.branchWatcher.onDidChange(() => this.branchChangeEmitter.fire());
+    this.branchWatcher.onDidCreate(() => this.branchChangeEmitter.fire());
+  }
+
+  private analyzeBranch(branchName: string): { type: BranchType; featureId?: string } {
+    if (!branchName) {
+
+      return { type: 'other' };
+    }
+
+    if (/^feature\/(\d+)-[a-z0-9-]+$/i.test(branchName)) {
+      const match = branchName.match(/^feature\/(\d+)-/i);
+      const featureId = match?.[1];
+
+      return { type: 'development', featureId };
+    }
+
+    if (/^release\/\d{4}\.w\d+\.\d+$/i.test(branchName)) {
+
+      return { type: 'release' };
+    }
+
+
+    return { type: 'other' };
   }
 
   private async getCurrentBranch(): Promise<string> {
-      return await this.execGit(['rev-parse', '--abbrev-ref', 'HEAD']);
+    const branch = await this.execGit(['rev-parse', '--abbrev-ref', 'HEAD']);
+
+    return branch;
   }
 
-  public async createBranch(branchName: string): Promise<void> {
-    await this.execGit(['checkout', '-b', branchName]);
-  }
-
-  public async generateCommitLog(): Promise<string> {
-    // Generate a simple commit log template or fetch recent logs
-    // For now, let's return a template based on recent changes
-    try {
-        const status = await this.execGit(['status', '-s']);
-        return `feat: update workflow\n\nChanges:\n${status}`;
-    } catch (e) {
-        return 'feat: update workflow';
-    }
-  }
-
-  public async commit(message: string): Promise<void> {
-    await this.execGit(['add', '.']);
-    await this.execGit(['commit', '-m', message]);
-  }
-
-  public async pushCode(): Promise<void> {
-    const currentBranch = await this.getCurrentBranch();
-    if (currentBranch) {
-        await this.execGit(['push', 'origin', currentBranch]);
-    }
-  }
-
-  public async syncMaster(): Promise<void> {
-    // Assume master is the main branch, or try to detect main/master
-    // For safety, let's try to fetch and merge origin/master
-    try {
-        await this.execGit(['fetch', 'origin', 'master']);
-        await this.execGit(['merge', 'origin/master']);
-    } catch (e) {
-        // Fallback to main if master fails
-        await this.execGit(['fetch', 'origin', 'main']);
-        await this.execGit(['merge', 'origin/main']);
-    }
-  }
-
-  private async execGit(args: string[]): Promise<string> {
+  private execGit(args: string[]): Promise<string> {
     if (!this.workspaceRoot) {
-      return '';
+
+      return Promise.resolve('');
     }
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       cp.exec(`git ${args.join(' ')}`, { cwd: this.workspaceRoot }, (err, stdout) => {
         if (err) {
-          console.error(`Git error: ${err.message}`);
-          resolve('');
+          reject(err);
           return;
         }
+
         resolve(stdout.trim());
+      });
+    });
+  }
+
+  private execShellCommand(command: string): Promise<void> {
+    if (!this.workspaceRoot) {
+
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve, reject) => {
+      cp.exec(command, { cwd: this.workspaceRoot }, (err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        resolve();
       });
     });
   }

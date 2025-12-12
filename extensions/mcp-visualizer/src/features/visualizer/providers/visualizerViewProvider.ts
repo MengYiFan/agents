@@ -18,6 +18,7 @@ import { getUiText, resolveSupportedLanguage } from '../../../shared/localizatio
 import type { UiText } from '../../../shared/localization/i18n';
 import { GitService } from '../../../services/git/gitService';
 import { WorkflowService } from '../../../services/workflow/workflowService';
+import type { WorkflowStageId } from '../../../services/workflow/workflowService';
 import { AgentService } from '../../../services/mcp/agentService';
 
 interface WebviewMessage {
@@ -29,6 +30,12 @@ interface WebviewMessage {
     | 'switchLocale'
     | 'executeInstruction'
     | 'executeStageAction'
+    | 'startWorkflow'
+    | 'saveField'
+    | 'completeStage'
+    | 'createDevBranch'
+    | 'stashAndCreate'
+    | 'resetAndCreate'
     | 'saveWorkflowLink';
   docId?: string;
   language?: SupportedLanguage;
@@ -40,6 +47,10 @@ interface WebviewMessage {
   link?: string;
   blockId?: string;
   data?: any;
+  fieldId?: string;
+  baseBranch?: string;
+  meegleId?: string;
+  prdBrief?: string;
 }
 
 export class VisualizerViewProvider implements vscode.WebviewViewProvider {
@@ -57,6 +68,7 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
 
   private gitService: GitService;
   private workflowService: WorkflowService;
+  private pendingBranchPayload?: { baseBranch: string; meegleId: string; prdBrief: string };
 
   constructor(private readonly context: vscode.ExtensionContext) {
     this.locale = resolveSupportedLanguage(vscode.env.language);
@@ -75,10 +87,10 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
       this.gitService.onDidBranchChange(async () => {
         const gitInfo = await this.gitService.getGitInfo();
         const workflowData = this.workflowService.getWorkflowData(gitInfo.currentBranch);
-        this.postMessage({ 
-          type: 'gitInfoUpdated', 
-          gitInfo, 
-          workflow: workflowData 
+        this.postMessage({
+          type: 'gitInfoUpdated',
+          gitInfo,
+          workflow: workflowData,
         });
       })
     );
@@ -159,20 +171,54 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
           }
           break;
           break;
-        case 'saveWorkflowLink':
-          if (message.branch && message.workflowStepId && message.link !== undefined) {
-            await this.workflowService.saveLink(message.branch, message.workflowStepId, message.link);
-            await this.sendInitialData(); // Refresh to show updated data
+        case 'startWorkflow':
+          if (message.branch) {
+            const workflow = await this.workflowService.startWorkflow(message.branch);
+            this.postMessage({ type: 'workflowUpdated', workflow });
           }
           break;
-        case 'saveWorkflowStep':
-          if (message.branch && message.blockId && message.data !== undefined) {
-            await this.workflowService.saveWorkflowStep(message.branch, message.blockId, message.data);
-            // Get updated data and send back 'workflowUpdated' message
-            // const gitInfo = await this.gitService.getGitInfo(); // Unused
-            const workflowData = this.workflowService.getWorkflowData(message.branch);
-            this.postMessage({ type: 'workflowUpdated', workflow: workflowData });
-            vscode.window.showInformationMessage('Save success');
+        case 'saveField':
+          if (message.branch && message.fieldId && message.stageId && message.data !== undefined) {
+            const workflow = await this.workflowService.saveField(
+              message.branch,
+              message.stageId as WorkflowStageId,
+              message.fieldId,
+              message.data,
+            );
+            this.postMessage({ type: 'workflowUpdated', workflow });
+          }
+          break;
+        case 'completeStage':
+          if (message.branch && message.stageId) {
+            const workflow = await this.workflowService.completeStage(
+              message.branch,
+              message.stageId as WorkflowStageId,
+            );
+            this.postMessage({ type: 'workflowUpdated', workflow });
+          }
+          break;
+        case 'createDevBranch':
+          if (message.baseBranch && message.meegleId && message.prdBrief) {
+            this.pendingBranchPayload = {
+              baseBranch: message.baseBranch,
+              meegleId: message.meegleId,
+              prdBrief: message.prdBrief,
+            };
+            await this.handleBranchCreation();
+          }
+          break;
+        case 'stashAndCreate':
+          this.pendingBranchPayload = this.pendingBranchPayload ?? undefined;
+          if (this.pendingBranchPayload) {
+            await this.gitService.stashChanges();
+            await this.handleBranchCreation();
+          }
+          break;
+        case 'resetAndCreate':
+          this.pendingBranchPayload = this.pendingBranchPayload ?? undefined;
+          if (this.pendingBranchPayload) {
+            await this.gitService.resetWorkingTree();
+            await this.handleBranchCreation();
           }
           break;
         default:
@@ -223,8 +269,9 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
     }
 
     // Get git info
-    const gitService = new GitService(workspaceRoot || '');
+    const gitService = new GitService();
     const gitInfo = await gitService.getGitInfo();
+    const releaseBranches = await gitService.listReleaseBranches();
 
     // Get workflow data
     const workflowService = new WorkflowService(this.context);
@@ -262,8 +309,36 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
       availableLocales: ['zh-CN', 'en-US'],
       theme: this.getThemeInfo(),
       gitInfo,
+      releaseBranches,
       workflowData,
     });
+  }
+
+  private async handleBranchCreation(): Promise<void> {
+    if (!this.pendingBranchPayload) {
+      return;
+    }
+
+    const gitInfo = await this.gitService.getGitInfo();
+    if (gitInfo.hasUncommitted) {
+      this.postMessage({ type: 'branchBlocked', reason: 'uncommitted' });
+      return;
+    }
+
+    try {
+      const branchName = await this.gitService.generateDevelopmentBranch(
+        this.pendingBranchPayload.baseBranch,
+        this.pendingBranchPayload.meegleId,
+        this.pendingBranchPayload.prdBrief,
+      );
+      const workflow = this.workflowService.getWorkflowData(branchName);
+      const gitInfo = await this.gitService.getGitInfo();
+      this.postMessage({ type: 'branchCreated', branch: branchName, workflow, gitInfo });
+      this.pendingBranchPayload = undefined;
+    } catch (error) {
+      const err = error as { message?: string };
+      vscode.window.showErrorMessage(err.message ?? '生成开发分支失败');
+    }
   }
 
   private postMessage(message: unknown) {
