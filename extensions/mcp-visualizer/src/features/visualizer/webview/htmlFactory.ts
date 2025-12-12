@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import type { LifecycleStage, SupportedLanguage } from '../../../types';
 import type { UiText } from '../../../shared/localization/i18n';
-import { renderBranchLanes, renderBranchNodes, renderStageNodes } from './diagram';
+
 
 function getNonce(): string {
   let text = '';
@@ -20,10 +20,10 @@ export function getWebviewHtml(
   locale: SupportedLanguage,
 ): string {
   const styleUri = webview.asWebviewUri(
-    vscode.Uri.joinPath(extensionUri, 'assets', 'styles', 'main.css'),
+    vscode.Uri.joinPath(extensionUri, 'dist', 'webview', 'index.css'),
   );
   const scriptUri = webview.asWebviewUri(
-    vscode.Uri.joinPath(extensionUri, 'assets', 'scripts', 'main.js'),
+    vscode.Uri.joinPath(extensionUri, 'dist', 'webview', 'index.js'),
   );
   const nonce = getNonce();
   const csp = `default-src 'none'; style-src ${webview.cspSource}; img-src ${webview.cspSource} https: data:; script-src 'nonce-${nonce}'`;
@@ -38,33 +38,7 @@ export function getWebviewHtml(
     <link rel="stylesheet" href="${styleUri}">
   </head>
   <body>
-    <header class="view-header">
-      <div class="header-left">
-        <div class="header-info">
-          <h1 data-i18n="header.title">${uiText.header.title}</h1>
-          <p data-i18n="header.subtitle">${uiText.header.subtitle}</p>
-        </div>
-        <div class="auth-badges" id="authBadges"></div>
-      </div>
-      <div class="header-right">
-        <div class="locale-switcher" id="uiLocaleSwitcher"></div>
-      </div>
-    </header>
-    <div class="tab-container">
-      <div class="tab-header">
-        <button class="tab-button active" data-target="listTab" data-i18n="tabs.list">${uiText.tabs.list}</button>
-        <button class="tab-button" data-target="workflowTab" data-i18n="tabs.workflow">${uiText.tabs.workflow}</button>
-      </div>
-      <div id="listTab" class="tab-content active">
-        <div class="mcp-grid" id="mcpList"></div>
-        <div class="instruction-list" id="instructionList"></div>
-      </div>
-      <div id="workflowTab" class="tab-content">
-        <div id="workflowContainer" class="workflow-container"></div>
-        <div id="stageActions" class="stage-actions"></div>
-        <div id="workflowMessage" class="workflow-message hidden"></div>
-      </div>
-    </div>
+    <div id="root"></div>
     <script nonce="${nonce}" src="${scriptUri}"></script>
   </body>
 </html>`;
