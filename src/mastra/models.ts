@@ -7,7 +7,7 @@ export const openaiModel = openai("gpt-4o");
 
 // DeepSeek compatible model using OpenAI SDK
 const deepseek = createOpenAI({
-  baseURL: "https://api.deepseek.com",
+  baseURL: "https://api.deepseek.com/v1",
   apiKey: process.env.DEEPSEEK_API_KEY,
 });
 

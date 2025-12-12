@@ -1,5 +1,9 @@
 import { Buffer } from "node:buffer";
 import { GoogleAuth } from "google-auth-library";
+import { GoogleOAuthManager, PuppeteerAuthManager } from "../../auth/index.js";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as os from "node:os";
 
 export interface GrafanaGoogleAuthConfig {
   /**
@@ -15,6 +19,8 @@ export interface GrafanaGoogleAuthConfig {
    * provided the Grafana base URL is used as the audience value.
    */
   targetAudience?: string;
+  clientId?: string;
+  clientSecret?: string;
 }
 
 export interface GrafanaMcpConfig {
@@ -200,7 +206,8 @@ const decodeJwtExpiration = (token: string): number | undefined => {
 };
 
 class GoogleIapTokenManager {
-  private readonly auth: GoogleAuth;
+  private readonly auth?: GoogleAuth;
+  private readonly oauthManager?: GoogleOAuthManager;
   private client?: any;
 
   private cachedToken?: CachedToken;
@@ -208,18 +215,34 @@ class GoogleIapTokenManager {
   constructor(
     private readonly config: Required<GrafanaGoogleAuthConfig> & { refreshMarginMs: number },
   ) {
-    const authOptions: any = {
-      scopes: ["https://www.googleapis.com/auth/cloud-platform"],
-    };
-
-    if (config.clientEmail && config.privateKey) {
-      authOptions.credentials = {
-        client_email: config.clientEmail,
-        private_key: config.privateKey,
+    if (config.clientId && config.clientSecret) {
+      this.oauthManager = new GoogleOAuthManager(config.clientId, config.clientSecret);
+    } else {
+      const authOptions: any = {
+        scopes: ["https://www.googleapis.com/auth/cloud-platform"],
       };
-    }
 
-    this.auth = new GoogleAuth(authOptions);
+      if (config.clientEmail && config.privateKey) {
+        authOptions.credentials = {
+          client_email: config.clientEmail,
+          private_key: config.privateKey,
+        };
+      }
+
+      this.auth = new GoogleAuth(authOptions);
+    }
+  }
+
+  async authenticate(): Promise<void> {
+    if (this.oauthManager) {
+      const tokens = await this.oauthManager.authenticate();
+      if (tokens.id_token) {
+        this.cachedToken = {
+          token: tokens.id_token,
+          expiresAt: tokens.expiry_date ? tokens.expiry_date : undefined,
+        };
+      }
+    }
   }
 
   async getIdToken(): Promise<string> {
@@ -229,16 +252,31 @@ class GoogleIapTokenManager {
       return cached.token;
     }
 
+    if (this.oauthManager) {
+      // For OAuth, we rely on the authenticate() method being called explicitly first,
+      // or we could try to refresh if we had a refresh token (not implemented in this MVP).
+      // If we have credentials but no token, we might need to re-authenticate or throw.
+      const creds = this.oauthManager.getCredentials();
+      if (creds.id_token) {
+         // Check if expired
+         if (creds.expiry_date && Date.now() + this.config.refreshMarginMs > creds.expiry_date) {
+            // TODO: Implement refresh flow if needed, or just re-authenticate
+            // For now, assume re-auth is needed if expired
+            throw new Error("OAuth token expired. Please re-authenticate.");
+         }
+         return creds.id_token;
+      }
+      throw new Error("OAuth not authenticated. Please call authenticate action first.");
+    }
+
+    if (!this.auth) {
+        throw new Error("No authentication mechanism configured.");
+    }
+
     if (!this.client) {
       this.client = await this.auth.getIdTokenClient(this.config.targetAudience);
     }
 
-    // The getIdTokenClient returns an IdTokenClient which has a request method
-    // that automatically adds the Authorization header. However, we need the raw token
-    // to pass to Grafana.
-    // The GoogleAuth library doesn't expose a simple "getToken" for IAP in the same way JWT did.
-    // But IdTokenClient has a `fetchIdToken` method similar to JWT.
-    
     const token = await this.client.fetchIdToken(this.config.targetAudience);
     const expiresAt = decodeJwtExpiration(token);
 
@@ -260,8 +298,11 @@ export class GrafanaMcpClient {
   private readonly fetchImpl: typeof fetch;
 
   private readonly tokenManager: GoogleIapTokenManager;
+  private readonly puppeteerManager = new PuppeteerAuthManager();
+  private readonly cookieFilePath: string;
 
   private readonly cookieJar = new Map<string, StoredCookie>();
+  private userAgent?: string;
 
   constructor(private readonly config: GrafanaMcpConfig) {
     const normalizedBaseUrl = config.baseUrl.replace(/\/+$/, "");
@@ -287,9 +328,58 @@ export class GrafanaMcpClient {
     this.tokenManager = new GoogleIapTokenManager({
       clientEmail: config.googleAuth.clientEmail ?? "",
       privateKey: config.googleAuth.privateKey ?? "",
+      clientId: config.googleAuth.clientId ?? "",
+      clientSecret: config.googleAuth.clientSecret ?? "",
       targetAudience,
       refreshMarginMs: this.refreshMarginMs,
     });
+
+    // Initialize cookie file path
+    const homeDir = os.homedir();
+    const mastraDir = path.join(homeDir, ".mastra");
+    if (!fs.existsSync(mastraDir)) {
+      fs.mkdirSync(mastraDir, { recursive: true });
+    }
+    // Create a unique filename based on baseUrl and clientEmail to support multiple instances/users
+    const safeBaseUrl = this.baseUrl.replace(/[^a-z0-9]/gi, "_");
+    const email = config.googleAuth.clientEmail || "default";
+    const safeEmail = email.replace(/[^a-z0-9]/gi, "_");
+    
+    this.cookieFilePath = path.join(mastraDir, `grafana_cookies_${safeBaseUrl}_${safeEmail}.json`);
+
+    this.loadCookies();
+  }
+
+  async authenticate(method: "oauth" | "browser" = "browser"): Promise<void> {
+    if (method === "browser") {
+      // Create a persistent user data directory for Puppeteer
+      // We use the same safeEmail approach as the cookie file to isolate profiles per user account
+      const safeBaseUrl = this.baseUrl.replace(/[^a-z0-9]/gi, "_");
+      const email = this.config.googleAuth.clientEmail || "default";
+      const safeEmail = email.replace(/[^a-z0-9]/gi, "_");
+      
+      const homeDir = os.homedir();
+      const mastraDir = path.join(homeDir, ".mastra");
+      const userDataDir = path.join(mastraDir, `puppeteer_profile_${safeBaseUrl}_${safeEmail}`);
+
+      const result = await this.puppeteerManager.authenticate(this.baseUrl, userDataDir);
+      
+      this.userAgent = result.userAgent;
+
+      // Store cookies
+      for (const cookie of result.cookies) {
+        this.cookieJar.set(cookie.name, {
+          name: cookie.name,
+          value: cookie.value,
+          expiresAt: cookie.expires * 1000,
+        });
+      }
+      this.saveCookies();
+      
+      console.log("Puppeteer authentication successful. Cookies stored.");
+    } else {
+      await this.tokenManager.authenticate();
+    }
   }
 
   private buildUrl(path: string): string {
@@ -330,6 +420,7 @@ export class GrafanaMcpClient {
 
       this.cookieJar.set(parsed.name, parsed);
     }
+    this.saveCookies();
   }
 
   private hasValidSession(): boolean {
@@ -344,6 +435,42 @@ export class GrafanaMcpClient {
     }
 
     return Date.now() + this.refreshMarginMs < session.expiresAt;
+  }
+
+  private loadCookies(): void {
+    try {
+      if (fs.existsSync(this.cookieFilePath)) {
+        const data = fs.readFileSync(this.cookieFilePath, "utf-8");
+        const parsed = JSON.parse(data);
+
+        // Handle legacy array format
+        const cookies = Array.isArray(parsed) ? parsed : (parsed.cookies as StoredCookie[]);
+        this.userAgent = Array.isArray(parsed) ? undefined : (parsed.userAgent as string);
+
+        if (Array.isArray(cookies)) {
+          for (const cookie of cookies) {
+            this.cookieJar.set(cookie.name, cookie);
+          }
+        }
+        // console.log(`Loaded ${cookies?.length ?? 0} cookies from ${this.cookieFilePath}`);
+      }
+    } catch (error) {
+      console.warn(`Failed to load cookies from ${this.cookieFilePath}:`, error);
+    }
+  }
+
+  private saveCookies(): void {
+    try {
+      const cookies = Array.from(this.cookieJar.values());
+      const data = {
+        cookies,
+        userAgent: this.userAgent,
+      };
+      fs.writeFileSync(this.cookieFilePath, JSON.stringify(data, null, 2), "utf-8");
+      // console.log(`Saved ${cookies.length} cookies to ${this.cookieFilePath}`);
+    } catch (error) {
+      console.warn(`Failed to save cookies to ${this.cookieFilePath}:`, error);
+    }
   }
 
   private isRedirect(status: number): boolean {
@@ -364,6 +491,10 @@ export class GrafanaMcpClient {
     const token = await this.tokenManager.getIdToken();
 
     headers.set("Authorization", `Bearer ${token}`);
+    
+    if (this.userAgent) {
+      headers.set("User-Agent", this.userAgent);
+    }
 
     const cookieHeader = this.getCookieHeader();
     if (cookieHeader) {

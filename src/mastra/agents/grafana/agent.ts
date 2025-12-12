@@ -9,7 +9,7 @@ import {
   type GrafanaDatasource,
 } from "./client.js";
 
-type GrafanaAction = "searchDashboards" | "getDashboard" | "listDatasources" | "getPanel";
+type GrafanaAction = "searchDashboards" | "getDashboard" | "listDatasources" | "getPanel" | "authenticate";
 
 interface GrafanaCredentialsInput {
   baseUrl?: string;
@@ -17,6 +17,8 @@ interface GrafanaCredentialsInput {
   googlePrivateKey?: string;
   googleTargetAudience?: string;
   serviceAccountJson?: string;
+  clientId?: string;
+  clientSecret?: string;
 }
 
 interface GrafanaOperationInput {
@@ -25,6 +27,7 @@ interface GrafanaOperationInput {
   starred?: boolean;
   uid?: string;
   panelId?: number;
+  method?: "oauth" | "browser";
   credentials?: GrafanaCredentialsInput;
 }
 
@@ -124,12 +127,17 @@ const resolveGrafanaConfig = (credentials?: GrafanaCredentialsInput): GrafanaMcp
     process.env.GRAFANA_IAP_TARGET_AUDIENCE ??
     undefined;
 
+  const clientId = credentials?.clientId ?? process.env.GRAFANA_GOOGLE_CLIENT_ID;
+  const clientSecret = credentials?.clientSecret ?? process.env.GRAFANA_GOOGLE_CLIENT_SECRET;
+
   return {
     baseUrl,
     googleAuth: {
       clientEmail,
       privateKey: privateKey ? normalizePrivateKey(privateKey) : undefined,
       targetAudience: targetAudience ?? baseUrl,
+      clientId,
+      clientSecret,
     },
   };
 };
@@ -155,7 +163,7 @@ const grafanaTool = {
     "与 Grafana MCP 服务交互，支持仪表盘搜索、仪表盘详情、数据源列表与面板定义解析，自动处理内部环境登录。",
   inputSchema: z.object({
     action: z
-      .enum(["searchDashboards", "getDashboard", "listDatasources", "getPanel"])
+      .enum(["searchDashboards", "getDashboard", "listDatasources", "getPanel", "authenticate"])
       .describe("要执行的 Grafana 操作。"),
     query: z
       .string()
@@ -165,6 +173,10 @@ const grafanaTool = {
       .boolean()
       .optional()
       .describe("是否仅搜索已收藏的仪表盘。仅在 action=searchDashboards 时有效。"),
+    method: z
+      .enum(["oauth", "browser"])
+      .optional()
+      .describe("认证方式。'browser' 为浏览器弹窗登录（推荐），'oauth' 为标准 OAuth2 流程（需配置 Client ID）。"),
     uid: z.string().optional().describe("仪表盘的唯一 UID。"),
     panelId: z.number().optional().describe("需要解析的面板 ID，仅在 action=getPanel 时必填。"),
     credentials: z
@@ -174,12 +186,14 @@ const grafanaTool = {
         googlePrivateKey: z.string().optional(),
         googleTargetAudience: z.string().optional(),
         serviceAccountJson: z.string().optional(),
+        clientId: z.string().optional(),
+        clientSecret: z.string().optional(),
       })
       .describe(
         "**通常不需要提供**。仅在需要覆盖环境变量配置时使用。可传入 Grafana 基础地址与谷歌服务账号密钥信息。",
       ),
   }),
-  execute: async ({ action, query, starred, uid, panelId, credentials }: GrafanaOperationInput): Promise<GrafanaOperationResult> => {
+  execute: async ({ action, query, starred, uid, panelId, method, credentials }: GrafanaOperationInput): Promise<GrafanaOperationResult> => {
     const client = getGrafanaClient(credentials);
 
     switch (action) {
@@ -210,6 +224,10 @@ const grafanaTool = {
         const { panel, dashboardTitle } = await client.getPanelDefinition(uid, panelId);
         return { action, dashboardUid: uid, panelId, dashboardTitle, panel };
       }
+      case "authenticate": {
+        await client.authenticate(method ?? "browser");
+        return { action, message: "Authentication successful." } as any;
+      }
       default: {
         throw new Error(`未支持的 Grafana 操作: ${action}`);
       }
@@ -226,12 +244,13 @@ export const grafanaMcpAgent = new Agent({
     "封装 Grafana MCP 能力，能够通过谷歌 IAP 自动完成登录并检索关键监控信息。\n\n" +
     "你是一名熟悉 Grafana 的内部平台助手，能够基于结构化指令调用 grafanaMcp 工具执行搜索、读取仪表盘与面板配置等任务。\n\n" +
     "认证说明：\n" +
-    "本 Agent 默认使用环境变量中的配置（支持 ADC）。**请勿要求用户提供 credentials 参数**，除非用户明确表示要覆盖默认配置。\n" +
+    "本 Agent 默认使用环境变量中的配置。如果未配置认证信息，**请优先建议用户运行 `login` 指令**，这将触发浏览器弹窗登录（零配置模式）。\n" +
     "如果用户未提供任何参数直接询问，尝试列出已收藏的仪表盘（action=searchDashboards, starred=true）。\n\n" +
     "快捷指令支持：\n" +
     "1. `check [仪表盘名称或UID]`: 搜索并查看仪表盘详情。\n" +
     "2. `info [仪表盘UID]`: 获取仪表盘的完整 JSON 定义。\n" +
-    "3. `list`: 列出所有数据源。\n\n" +
+    "3. `list`: 列出所有数据源。\n" +
+    "4. `login`: 触发浏览器弹窗登录（推荐）。\n\n" +
     "如果用户提供的查询看起来像 UID（例如包含短横线或长度固定），优先尝试按 UID 获取；否则作为关键字搜索。",
   model: geminiModel,
   tools: { grafanaMcp: grafanaTool },
