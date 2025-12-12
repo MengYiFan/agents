@@ -197,6 +197,46 @@ body {
   margin: 0 auto;
 }
 
+.workflow-panel {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--vscode-editorWidget-border);
+  border-radius: 8px;
+  background: var(--vscode-sideBar-background);
+}
+
+.basic-form .input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.basic-form label {
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.basic-form input,
+.branch-select {
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid var(--vscode-editorWidget-border);
+  background: var(--vscode-input-background);
+  color: var(--vscode-foreground);
+}
+
+.branch-select {
+  min-width: 180px;
+}
+
+.btn-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
 .timeline {
   position: relative;
   padding-left: 32px;
