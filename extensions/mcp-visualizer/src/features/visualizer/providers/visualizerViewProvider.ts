@@ -36,7 +36,8 @@ interface WebviewMessage {
     | 'createDevBranch'
     | 'stashAndCreate'
     | 'resetAndCreate'
-    | 'saveWorkflowLink';
+    | 'saveWorkflowLink'
+    | 'showError';
   docId?: string;
   language?: SupportedLanguage;
   branch?: string;
@@ -51,6 +52,7 @@ interface WebviewMessage {
   baseBranch?: string;
   meegleId?: string;
   prdBrief?: string;
+  message?: string;
 }
 
 export class VisualizerViewProvider implements vscode.WebviewViewProvider {
@@ -219,6 +221,11 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
           if (this.pendingBranchPayload) {
             await this.gitService.resetWorkingTree();
             await this.handleBranchCreation();
+          }
+          break;
+        case 'showError':
+          if (message.message) {
+            vscode.window.showErrorMessage(message.message);
           }
           break;
         default:

@@ -88,10 +88,12 @@
   "scripts": {
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
+    "watch:webview": "npm run watch --prefix webview-ui",
     "lint": "eslint src --ext ts",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "vscode:prepublish": "npm run compile",
-    "package": "vsce package"
+    "package": "vsce package",
+    "watch:dev": "npm run --silent watch:webview "
   },
   "devDependencies": {
     "@types/node": "^20.11.24",
@@ -106,6 +108,7 @@
     "vsce": "^2.15.0"
   },
   "dependencies": {
-    "marked": "^9.1.6"
+    "marked": "^9.1.6",
+    "simple-git": "^3.30.0"
   }
 }
