@@ -26,7 +26,7 @@ export function getWebviewHtml(
     vscode.Uri.joinPath(extensionUri, 'dist', 'webview', 'index.js'),
   );
   const nonce = getNonce();
-  const csp = `default-src 'none'; style-src ${webview.cspSource}; img-src ${webview.cspSource} https: data:; script-src 'nonce-${nonce}'`;
+  const csp = `default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; img-src ${webview.cspSource} https: data:; script-src 'nonce-${nonce}';`;
 
   return `<!DOCTYPE html>
 <html lang="${locale}">

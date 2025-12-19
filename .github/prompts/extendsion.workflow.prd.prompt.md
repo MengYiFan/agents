@@ -1,256 +1,264 @@
-# VS Code 插件：研发工作流 (Workflow) PRD v3.0
+# VS Code 插件：研发工作流 (Workflow) PRD v6.0 (配置驱动版)
 
-## 1. 产品概述
+## 1. 产品核心架构
 
-### 1.1 核心理念
+### 1.1 设计理念
 
-本插件旨在将研发标准作业程序 (SOP) 代码化、可视化。通过 VS Code 面板引导开发者完成从“需求初始化”到“上线发布”的全生命周期，减少对 Git 命令行及其复杂参数的记忆负担，同时确保研发数据的规范性和可追溯性。
+本插件采用 **“配置驱动 UI (Configuration-Driven UI)”** 模式。前端渲染引擎不包含硬编码的业务逻辑，完全依据 JSON 配置渲染 Ant Design 组件。
 
-### 1.2 核心设计原则
+### 1.2 数据协议
 
-1.  **配置驱动 (Configuration as Code)**：流程步骤、表单项、按钮行为均由配置文件定义，实现流程与插件代码解耦。
-2.  **数据跟随分支 (Branch-Isolation)**：研发状态数据存储于当前分支的文件系统中，随代码提交，无需维护全局庞大的状态文件。
-3.  **弱化人工干预**：除冲突解决外，分支创建、打 Tag、合并等操作全自动化；回退等非标准操作进行视觉弱化。
+1. **静态配置 (`workflow.config.json`)**：定义步骤流程、表单项、按钮行为。
+2. **动态状态 (`.vscode/workflow-context.json`)**：
 
----
-
-## 2. 技术架构与数据协议
-
-### 2.1 配置文件 (`workflow.config.json`)
-
-- **位置**：项目根目录 `/workflow.config.json`
-- **作用**：定义 SOP 的结构（步骤、表单、按钮逻辑）。
-- **维护者**：Tech Lead / 架构师。
-
-### 2.2 状态文件 (`.vscode/workflow-context.json`)
-
-- **位置**：项目根目录 `/.vscode/workflow-context.json`
-- **作用**：记录**当前分支**的流转状态、表单数据、历史记录。
-- **维护策略**：
-  - **跟随分支**：每个 Feature 分支独立拥有一份，互不干扰。
-  - **随码提交**：状态变更后，插件自动将其 commit 到当前分支，确保多人协作状态同步。
-  - **自动清理**：分支被删除时，该文件随之销毁，不存在文件膨胀问题。
+- **分布式存储**：状态文件存储在当前分支根目录。
+- **单一数据源**：记录当前步骤 (`currentStep`)、表单数据 (`formData`) 及历史操作。
+- **随码提交**：每次状态变更（如进入下一步），插件自动修改该文件并 Commit，确保多人协作时的状态同步。
 
 ---
 
-## 3. 视图与交互逻辑
+## 2. 交互视图逻辑
 
-插件根据当前分支是否包含有效的 `workflow-context.json` 或分支命名规范，自动切换视图。
+插件根据当前 Git 分支状态，加载不同的配置节点。
 
-### 3.1 视图 A：非开发模式 (初始化视图)
+### 2.1 视图 A：非开发分支 (初始化视图)
 
-**触发条件**：当前处于 `master`/`main` 或非 Feature 分支。
+- **触发条件**：当前分支名 **不匹配** `feature/*` 规范。
+- **UI 呈现**：不显示步骤条，仅居中显示主按钮。
+- **按钮配置**：`Action: LoadStep('init')`。
 
-- **界面**：不显示步骤条，仅居中显示主按钮。
-- **主按钮**：“🚀 开始新的研发周期”
-- **交互**：点击加载 `workflow.config.json` 中定义的 **Step 1 (Init)** 配置，渲染初始化表单。
+### 2.2 视图 B：研发流程 (开发视图)
 
-### 3.2 视图 B：开发模式 (流转视图)
-
-**触发条件**：当前处于 Feature 分支且检测到 `workflow-context.json`。
-
-- **顶部组件**：步骤条 (Stepper)，高亮当前步骤，已完成步骤显示打钩状态。
-- **主体内容**：由配置渲染的动态表单或信息区。
-- **底部操作栏**：由配置渲染的主按钮和次级按钮。
+- **触发条件**：当前分支名 **匹配** `feature/*` 规范。
+- **UI 呈现**：
+- **顶部**：Ant Design `<Steps>` 组件，高亮当前步骤。
+- **中部**：根据配置渲染 `<Form>` (表单) 或 `<Descriptions>` (信息)。
+- **底部**：操作按钮组。
 
 ---
 
-## 4. 默认标准工作流配置详解
+## 3. 详细步骤配置说明
 
-以下定义了默认的 SOP 流程，插件需内置此逻辑作为 Default Config。
+以下逻辑需转化为 `workflow.config.json` 中的具体配置。
 
-### 步骤一：需求初始化 (Init)
+### 第一步：基本信息 (Init)
 
-#### 配置定义
+#### 1. 界面配置
 
-- **类型**：Form (表单)
-- **表单项**：
-  1.  `meegleId` (Number, 必填): 需求 ID。
-  2.  `brief` (Text, 必填): 任务简述（仅限英文/数字/-），用于生成分支名。
-  3.  `prdLink` (URL, 必填): PRD 地址。
-  4.  `designLink` (URL, 选填): 设计稿地址。
-  5.  `baseBranch` (Select, 默认 master): 基于哪个分支创建。
+- **类型**：`Form` (表单)
+- **表单字段**：
 
-#### 按钮交互
+1. `prdLink` (URL, 必填): PRD 链接。
+2. `designLink` (URL, 选填): 设计稿链接。
+3. `meegleId` (Number, 必填): Meege ID。
+4. `brief` (Text, 必填): **[新增]** 任务简述 (用于生成分支名 `prd_brief` 部分)。
+5. `backendPlan` (URL, 选填): 后端技术方案。
+6. `frontendPlan` (URL, 选填): 前端技术方案。
 
-- **主按钮**：“创建 & 进入开发”
-- **Action**：`CreateBranch`
+#### 2. 按钮交互
+
+**场景 A：处于非开发分支时**
+
+- **组件**：`BaseBranchSelect` (Dropdown: master/main/current, default: master)。
+- **主按钮**：“创建 & 生成开发分支”
+- **执行逻辑 (Action: CreateBranch)**：
+
+1. **脏检查**：若有未提交代码 -> 弹窗阻塞 (提供 `Stash` / `ForceClean` 选项)。
+2. **执行**：
+
+- `git fetch origin {base}`
+- `git checkout -b feature/{meegleId}-{brief} origin/{base}`
+- 初始化 `.vscode/workflow-context.json`。
+- 自动跳转至第二步。
+
+**场景 B：处于开发分支时 (回看/补填)**
+
+- **主按钮**：“保存 & 下一步”
+- 逻辑：校验表单 -> 更新 JSON -> 提交 JSON -> 跳转至第二步。
+
+- **次按钮**：“下一步” (仅当当前步骤已完成时显示)。
+
+---
+
+### 第二步：开发阶段 (Development)
+
+#### 1. 界面配置
+
+- **类型**：`Process` (流程)
+- **信息展示**：PRD 链接、设计稿链接 (从 Context 读取)。
+
+#### 2. 按钮交互 (双按钮机制)
+
+- **按钮 A**：“提交代码” (日常操作)
+- **样式**：`Default`
+- **Action**：`GitCommit` (调用 `git commit`)。
+- _说明：此按钮仅提交代码，不流转步骤。_
+
+- **按钮 B**：“提交 & 下一步” (阶段流转)
+- **样式**：`Primary`
+- **Action**：`Transition`
 - **执行逻辑**：
-  1.  **脏检查**：若 Git 工作区有未提交代码 -> 弹窗提示（提供 Stash 或 Reset 选项）。
-  2.  **分支操作**：`git fetch` -> `git checkout -b feature/{meegleId}-{brief} origin/{baseBranch}`。
-  3.  **状态初始化**：创建 `.vscode/workflow-context.json` 写入表单数据，设置 `currentStep = 2`。
-  4.  **视图刷新**：自动进入第二步。
 
-### 步骤二：开发阶段 (Development)
+1. 执行 `git commit` (确保最后一次变更已提交)。
+2. 打 Tag：`test-feature/{meegleId}-{MMDD}-{hh}-{mm}`。
+3. 推送代码和 Tag。
+4. 更新状态 `currentStep = 3` 并 Commit。
+5. 跳转至第三步。
 
-#### 配置定义
+---
 
-- **类型**：Process (流程节点)
-- **信息展示**：显示 PRD 链接、设计稿链接。
+### 第三步：测试阶段 (Testing)
 
-#### 按钮交互
+#### 1. 界面配置
 
-1.  **功能按钮**：“提交代码” (样式: Secondary)
-    - **Action**：`GitCommit` (调用 yummy commit 或 git UI)。
-2.  **主按钮**：“开发完成，进入测试” (样式: Primary)
-    - **Action**：`Transition`
-    - **执行逻辑**：
-      - 校验 Git 干净状态。
-      - 自动打 Tag: `test-feature/{id}-{MMDD}-{hhmm}-dev-end`。
-      - 更新状态 `currentStep = 3` 并自动 commit 状态文件。
+- **类型**：`Process`
+- **文案**：在 {date} 时间，进入验收阶段 (若已完成)。
 
-### 步骤三：测试阶段 (Testing)
+#### 2. 按钮交互 (双按钮机制)
 
-#### 按钮交互
+- **按钮 A**：“测试问题修复 & 提交”
+- **样式**：`Default`
+- **Action**：`GitCommit`。
 
-1.  **功能按钮**：“修复 Bug & 提交” (样式: Secondary)
-    - **Action**：`GitCommit` (Message 前缀预设 `fix: `)。
-2.  **回退按钮**：“回退至开发” (样式: Ghost/Link，**弱化显示**)
-    - **Action**：`Rollback`
-    - **交互**：点击弹出 Input 框要求填写原因 -> 确认后 `currentStep` 变更为 2 -> 记录回退日志。
-3.  **主按钮**：“测试通过，进入验收” (样式: Primary)
-    - **Action**：`Transition`
-    - **Tag 模板**：`test-feature/{id}-{MMDD}-{hhmm}-test-pass`。
+- **按钮 B**：“提交 & 下一步” (测试通过)
+- **样式**：`Primary`
+- **Action**：`Transition`
+- **执行逻辑**：
 
-### 步骤四：验收阶段 (Acceptance)
+1. 执行 `git commit`。
+2. 打 Tag：`test-feature/{meegleId}-{MMDD}-{hh}-{mm}`。
+3. 更新状态 `currentStep = 4` 并 Commit。
+4. 跳转至第四步。
 
-#### 按钮交互
+---
 
-1.  **功能按钮**：“验收修复 & 提交” (样式: Secondary)。
-2.  **回退按钮**：“验收不通过” (样式: Ghost/Link，**弱化显示**)。
-3.  **主按钮**：“验收通过，准备上线” (样式: Primary)
-    - **Action**：`Transition`
-    - **Tag 模板**：`stage-feature/{id}-{MMDD}-{hhmm}-accepted`。
+### 第四步：验收阶段 (Acceptance)
 
-### 步骤五：上线阶段 (Release)
+#### 1. 界面配置
 
-#### 配置定义
+- **类型**：`Process`
+- **文案**：在 {date} 时间，进入待上线阶段 (若已完成)。
 
-- **类型**：Release (发布节点)
-- **UI 组件**：Release 分支选择器 (动态拉取 `origin/release/*`，按版本倒序)。
+#### 2. 按钮交互 (双按钮机制)
 
-#### 按钮交互
+- **按钮 A**：“验收问题修复 & 提交”
+- **样式**：`Default`
+- **Action**：`GitCommit`。
 
-- **主按钮**：“合并并推送” (样式: Primary)
+- **按钮 B**：“提交 & 下一步” (验收通过)
+- **样式**：`Primary`
+- **Action**：`Transition`
+- **执行逻辑**：
+
+1. 执行 `git commit`。
+2. 打 Tag：`stage-feature/{meegleId}-{MMDD}-{hh}-{mm}` (**注意 Tag 前缀变化**)。
+3. 更新状态 `currentStep = 5` 并 Commit。
+4. 跳转至第五步。
+
+---
+
+### 第五步：上线阶段 (Release)
+
+#### 1. 界面配置
+
+- **类型**：`Release`
+- **组件**：`RemoteBranchSelect` (异步拉取 `origin/release/**`)。
+
+#### 2. 按钮交互
+
+- **关联按钮**：“合并并推送” (未选分支时置灰)
 - **Action**：`MergeAndPush`
 - **执行逻辑**：
-  1.  **Sync**：`git fetch` -> `git checkout {releaseBranch}` -> `git pull`。
-  2.  **Merge**：`git merge feature/{id}-{brief}`。
-  3.  **Conflict Handling**：
-      - **无冲突** -> `git push` -> 流程结束。
-      - **有冲突** -> 挂起流程 -> 提示用户在 VS Code 侧边栏解决冲突 -> 按钮变为“冲突已解决，继续推送” -> 用户点击后校验并 Push。
+
+1. `git fetch` -> `git checkout {release}` -> `git pull`。
+2. `git merge feature/{current}`。
+3. **冲突处理**：
+
+- **无冲突**：直接 Push -> 流程结束。
+- **有冲突**：
+- Popup 提示“请先处理冲突”。
+- 显示**临时按钮**：“提交代码(请确保已解决完冲突)”。
+- 用户点击临时按钮 -> 执行 Commit & Push -> 流程结束。
 
 ---
 
-## 5. 配置化协议 (Configuration Schema)
+## 4. 配置驱动引擎规范 (Schema)
 
-为了实现上述流程，需遵循以下 JSON 配置规范。
-
-### 5.1 `workflow.config.json` 示例
+Antigravity 需依据此 Schema 实现渲染引擎。
 
 ```json
 {
-  "version": "1.0.0",
-  "variables": {
-    "featurePrefix": "feature/"
-  },
   "steps": [
     {
       "id": "init",
-      "label": "需求开启",
       "type": "form",
       "fields": [
-        {
-          "key": "meegleId",
-          "label": "Meegle ID",
-          "type": "number",
-          "required": true
-        },
+        { "key": "prdLink", "type": "url", "required": true },
+        { "key": "meegleId", "type": "number", "required": true },
         {
           "key": "brief",
-          "label": "任务简述",
           "type": "string",
+          "required": true,
           "pattern": "^[a-z0-9-]+$"
         }
+        // ... 其他字段
       ],
       "actions": [
         {
           "type": "CreateBranch",
           "label": "创建 & 生成开发分支",
-          "params": {
-            "template": "${featurePrefix}${meegleId}-${brief}",
-            "nextStep": "dev"
-          }
+          "style": "primary",
+          "params": { "template": "feature/${meegleId}-${brief}" }
         }
       ]
     },
     {
-      "id": "dev",
-      "label": "开发阶段",
+      "id": "development",
       "type": "process",
-      "display": ["PRD: ${prdLink}"],
       "actions": [
-        {
-          "type": "GitCommit",
-          "label": "提交代码",
-          "style": "secondary"
-        },
+        { "type": "GitCommit", "label": "提交代码", "style": "default" },
         {
           "type": "Transition",
-          "label": "开发完成，进入测试",
+          "label": "提交 & 下一步",
           "style": "primary",
           "params": {
-            "nextStep": "test",
-            "tag": "test-feature/${meegleId}-${date}-dev-end"
+            "tag": "test-feature/${meegleId}-${MMDD}-${hh}-${mm}",
+            "nextStep": "testing"
           }
         }
       ]
     },
+    // ... testing, acceptance 步骤配置类似，仅 Tag 和 nextStep 不同
     {
-      "id": "test",
-      "label": "测试阶段",
-      "type": "process",
+      "id": "release",
+      "type": "release",
       "actions": [
-        {
-          "type": "Rollback",
-          "label": "回退至开发",
-          "style": "ghost",
-          "params": { "targetStep": "dev", "requireReason": true }
-        },
-        {
-          "type": "Transition",
-          "label": "测试通过",
-          "style": "primary",
-          "params": { "nextStep": "acceptance" }
-        }
+        { "type": "MergeAndPush", "label": "关联按钮", "style": "primary" }
       ]
     }
-    // ... 其他步骤配置
   ]
 }
 ```
 
-### 5.2 支持的 Action 枚举
+## 5. 开发规范与约束
 
-| Action Type        | 说明                        | 必要参数                        |
-| ------------------ | --------------------------- | ------------------------------- |
-| **`CreateBranch`** | 创建并切换分支，初始化 JSON | `template` (分支名模板)         |
-| **`GitCommit`**    | 唤起提交界面                | `prefix` (可选 commit msg 前缀) |
-| **`Transition`**   | 流转到下一步，支持打 Tag    | `nextStep`, `tag` (可选)        |
-| **`Rollback`**     | 回退到上一步，支持日志记录  | `targetStep`                    |
-| **`MergeAndPush`** | 复杂的 Release 合并推送逻辑 | -                               |
-| **`GitStash`**     | 暂存代码 (用于前置检查)     | -                               |
-| **`GitReset`**     | 强制重置 (用于前置检查)     | -                               |
+1. **Tag 变量格式化**：
 
----
+- `{MMDD}`: 月日 (如 1220)
+- `{hh}`: 小时 (24h)
+- `{mm}`: 分钟
 
-## 6. 开发规范与容错
+2. **不可回退原则**：
 
-1. **分支命名**：强制小写，空格替换为中划线。
-2. **Tag 格式**：日期时间格式化为 `MMDD-hhmm` (如 1219-1405)。
-3. **异常处理**：
+- 步骤状态流转是单向的。UI 上不提供“上一步”按钮（除非管理员手动修改 JSON 文件）。
+- “已完成”的步骤需在 Steps 组件中高亮显示。
 
-- 所有 Git 网络操作 (Fetch/Push/Pull) 必须包裹在 `try-catch` 中，失败时通过 Toast 提示，禁止静默失败。
-- 检测到 `git merge` 冲突时，必须暂停自动流程，转交控制权给用户。
+3. **UI 库规范**：
 
-4. **自身状态保护**：插件在执行 Git 操作前，必须先确保持久化文件 `.vscode/workflow-context.json` 已保存，防止插件崩溃导致状态丢失。
+- 必须使用 React + Ant Design v5。
+- 必须使用 `ConfigProvider` 适配 VS Code 深色主题。
+
+4. **Git 操作**：
+
+- 使用 `simple-git`。
+- 所有 Fetch/Push 操作需包含 Loading 状态。

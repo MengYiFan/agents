@@ -16,7 +16,7 @@ import { executeInstructionAction } from '../../../services/instructions/instruc
 import { getAuthorizationStatuses } from '../../../services/auth/authorizationStatusService';
 import { getUiText, resolveSupportedLanguage } from '../../../shared/localization/i18n';
 import type { UiText } from '../../../shared/localization/i18n';
-import { GitService } from '../../../services/git/gitService';
+import { GitService, GitInfo } from '../../../services/git/gitService';
 import { WorkflowService } from '../../../services/workflow/workflowService';
 import type { WorkflowStageId } from '../../../services/workflow/workflowService';
 import { AgentService } from '../../../services/mcp/agentService';
@@ -285,8 +285,21 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
 
     // Get git info
     const gitService = new GitService();
-    const gitInfo = await gitService.getGitInfo();
-    const releaseBranches = await gitService.listReleaseBranches();
+    let gitInfo: GitInfo;
+    let releaseBranches: string[] = [];
+
+    try {
+        gitInfo = await gitService.getGitInfo();
+        releaseBranches = await gitService.listReleaseBranches();
+    } catch (error) {
+        console.warn('Failed to load git info:', error);
+        gitInfo = {
+            currentBranch: '',
+            isClean: true,
+            uncommittedChanges: 0,
+            hasUncommitted: false,
+        };
+    }
 
     // Get workflow data
     const workflowService = new WorkflowService(this.context);

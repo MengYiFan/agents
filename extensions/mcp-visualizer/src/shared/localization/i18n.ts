@@ -126,7 +126,7 @@ const UI_TEXTS: Record<SupportedLanguage, UiText> = {
   },
   'en-US': {
     header: {
-      title: 'MCP Visualizer',
+      title: 'MCP Visualizer~2',
       subtitle: 'Connect requirements, standards, and branches at a glance.',
     },
     tabs: {

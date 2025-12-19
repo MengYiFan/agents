@@ -10,7 +10,7 @@ import { IWorkflowContext } from './types';
 export class WorkflowStateManager {
     private readonly contextFileName = 'workflow-context.json';
 
-    constructor(private readonly workspaceRoot: string) {}
+    constructor(private readonly workspaceRoot?: string) {}
 
     /**
      * Loads the workflow context for the given branch.
@@ -22,6 +22,7 @@ export class WorkflowStateManager {
      * So we just read the file from the disk.
      */
     public async loadContext(): Promise<IWorkflowContext | null> {
+        if (!this.workspaceRoot) return null;
         const filePath = this.getContextFilePath();
         try {
             const content = await fs.readFile(filePath, 'utf-8');
@@ -40,6 +41,9 @@ export class WorkflowStateManager {
      * Saves the workflow context to disk.
      */
     public async saveContext(context: IWorkflowContext): Promise<void> {
+        if (!this.workspaceRoot) {
+            throw new Error('Cannot save workflow context: No workspace root');
+        }
         const filePath = this.getContextFilePath();
         try {
             // Ensure .vscode directory exists
@@ -57,6 +61,7 @@ export class WorkflowStateManager {
      * Deletes the context file (e.g. when workflow is reset)
      */
     public async deleteContext(): Promise<void> {
+        if (!this.workspaceRoot) return;
         const filePath = this.getContextFilePath();
         try {
             await fs.unlink(filePath);
@@ -68,6 +73,6 @@ export class WorkflowStateManager {
     }
 
     private getContextFilePath(): string {
-        return path.join(this.workspaceRoot, '.vscode', this.contextFileName);
+        return path.join(this.workspaceRoot!, '.vscode', this.contextFileName);
     }
 }

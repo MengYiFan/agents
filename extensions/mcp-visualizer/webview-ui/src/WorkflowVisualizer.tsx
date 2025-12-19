@@ -156,7 +156,7 @@ export default function WorkflowVisualizer({
   if (!isDevBranch && !isCreating) {
     return (
       <div className="flex flex-col items-center justify-center h-full space-y-4 p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <h1 className="text-2xl font-bold">研发流程可视化~3</h1>
+        <h1 className="text-2xl font-bold">研发流程可视化</h1>
         <p className="text-muted-foreground text-center max-w-md">
           当前不在开发分支。点击下方按钮开始新的研发周期。
         </p>

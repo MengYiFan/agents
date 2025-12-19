@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { ConfigProvider, theme } from "antd";
+import { ConfigProvider, theme, App } from "antd";
 
 // Map AntD tokens to VS Code CSS variables
 // This allows Ant Design to adapt to the VS Code theme automatically
 const vscodeThemeToken = {
   // Backgrounds
+  // In Light mode, 'editor-background' is often pure white.
+  // We map 'colorBgLayout' to 'sideBar.background' (often slightly grey) to distinguish from Cards (container)
   colorBgContainer: "var(--vscode-editor-background)",
   colorBgElevated: "var(--vscode-editorWidget-background)",
-  colorBgLayout: "var(--vscode-editor-background)", 
+  colorBgLayout: "var(--vscode-sideBar-background)", // Better contrast in light mode
   
   // Text
   colorText: "var(--vscode-editor-foreground)",
@@ -20,6 +22,7 @@ const vscodeThemeToken = {
   colorPrimaryActive: "var(--vscode-button-background)", // Fallback closest
   
   // Borders
+  // Use panel-border for general borders, input-border for lighter ones
   colorBorder: "var(--vscode-panel-border)",
   colorBorderSecondary: "var(--vscode-input-border)",
   
@@ -29,7 +32,8 @@ const vscodeThemeToken = {
 };
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isDark, setIsDark] = useState(false);
+  // Default to Dark Mode to match user preference and avoiding flash
+  const [isDark, setIsDark] = useState(true);
 
   useEffect(() => {
     // Function to check the current theme class on the body
@@ -55,9 +59,18 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       theme={{
         algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: vscodeThemeToken,
+        components: {
+            Layout: {
+                // Ensure layout background uses our mapped token
+                bodyBg: "var(--vscode-sideBar-background)",
+                headerBg: "var(--vscode-editor-background)", 
+            }
+        }
       }}
     >
-      {children}
+      <App>
+        {children}
+      </App>
     </ConfigProvider>
   );
 };
