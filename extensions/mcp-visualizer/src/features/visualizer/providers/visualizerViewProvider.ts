@@ -55,8 +55,12 @@ interface WebviewMessage {
   message?: string;
 }
 
+import { WebviewController } from '../../workflow/WebviewController';
+
 export class VisualizerViewProvider implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView;
+  private workflowController?: WebviewController;
+
 
   private docs: McpDocEntry[] = [];
 
@@ -115,6 +119,10 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
       this.uiText,
       this.locale,
     );
+    
+    // Initialize Workflow Controller
+    this.workflowController = new WebviewController(webviewView.webview, this.context);
+
     this.bindMessageListener(webviewView);
     await this.sendInitialData();
   }

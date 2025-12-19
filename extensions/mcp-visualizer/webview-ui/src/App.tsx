@@ -2,21 +2,24 @@ import { useEffect, useState } from 'react';
 import { vscode } from '@/lib/vscode';
 import { Header } from '@/components/Header';
 import { McpList } from '@/components/McpList';
-import WorkflowVisualizer from './WorkflowVisualizer';
 import { InitialData } from '@/types';
+import { IWorkflowConfig, IWorkflowContext } from '@/types/workflow';
 import { Loader2 } from 'lucide-react';
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { WorkflowRenderer } from '@/components/WorkflowRenderer';
 
 function App() {
     const [data, setData] = useState<InitialData | null>(null);
     const [activeTab, setActiveTab] = useState<'list' | 'workflow'>('list');
+    
+    // Workflow State
+    const [workflowConfig, setWorkflowConfig] = useState<IWorkflowConfig | null>(null);
+    const [workflowContext, setWorkflowContext] = useState<IWorkflowContext | null>(null);
+    const [workflowBranch, setWorkflowBranch] = useState<string>('');
 
     // Derived states for easier access
     const docs = data?.docs || [];
     const instructions = data?.instructions || [];
-    const gitInfo = data?.gitInfo || null;
-    const workflowData = data?.workflowData || null;
-    const releaseBranches = data?.releaseBranches || [];
     const uiText = data?.uiText;
 
     useEffect(() => {
@@ -25,32 +28,23 @@ function App() {
             switch (message.type) {
                 case 'initialData':
                     setData(message);
-                    // Only switch tab if this is the first data load
-                    if (!data && message.gitInfo?.currentBranch.startsWith('feature/')) {
-                        setActiveTab('workflow');
-                    }
-                    if (message.theme) {
-                         const isDark = message.theme.kind?.includes('dark');
-                         if (isDark) {
-                             document.documentElement.classList.add('dark');
-                             document.documentElement.classList.remove('light');
-                         } else {
-                             document.documentElement.classList.remove('dark');
-                             document.documentElement.classList.add('light');
-                         }
+                    // Request workflow init after main init
+                    vscode.postMessage({ type: 'webview:ready' });
+                    break;
+                case 'workflow:init':
+                case 'workflow:update':
+                    if (message.payload) {
+                        setWorkflowConfig(message.payload.config || null);
+                        setWorkflowContext(message.payload.context || null);
+                        setWorkflowBranch(message.payload.gitBranch || '');
                     }
                     break;
                 case 'gitInfoUpdated':
-                    setData(prev => prev ? ({ ...prev, gitInfo: message.gitInfo, workflowData: message.workflow || prev.workflowData }) : null);
-                    break;
-                case 'workflowUpdated':
-                    setData(prev => prev ? ({ ...prev, workflowData: message.workflow }) : null);
-                    break;
-                case 'docContent':
-                    console.log('Doc content received (handled by McpList if we implement full view, but simply opening for now)');
+                    setData(prev => prev ? ({ ...prev, gitInfo: message.gitInfo }) : null);
+                    // Re-trigger workflow fetch on branch change
+                    vscode.postMessage({ type: 'webview:ready' });
                     break;
                 case 'themeChanged':
-                     // Update theme dynamically
                      const isDark = message.theme.kind?.includes('dark');
                      document.documentElement.classList.toggle('dark', isDark);
                      document.documentElement.classList.toggle('light', !isDark);
@@ -103,11 +97,19 @@ function App() {
                     </div>
                     <div className={`absolute inset-0 transition-opacity duration-300 ${activeTab === 'workflow' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
                         {activeTab === 'workflow' && (
-                            <WorkflowVisualizer 
-                                gitInfo={gitInfo} 
-                                workflow={workflowData} 
-                                releaseBranches={releaseBranches}
-                            />
+                            <div className="h-full overflow-auto">
+                                {workflowConfig && workflowContext ? (
+                                    <WorkflowRenderer 
+                                        config={workflowConfig} 
+                                        context={workflowContext} 
+                                        gitBranch={workflowBranch}
+                                    />
+                                ) : (
+                                    <div className="flex items-center justify-center h-full text-muted-foreground">
+                                        <Loader2 className="animate-spin mr-2" /> Loading Workflow...
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
                 </div>
