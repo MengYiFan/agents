@@ -1,0 +1,106 @@
+{
+  "version": "6.0.0",
+  "branchPattern": {
+    "development": "^feature/.*"
+  },
+  "steps": [
+    {
+      "id": "init",
+      "type": "form",
+      "trigger": "default",
+      "fields": [
+        { "key": "prdLink", "label": "PRD Link", "type": "url", "required": true },
+        { "key": "designLink", "label": "Design Link", "type": "url" },
+        { "key": "meegleId", "label": "Meegle ID", "type": "number", "required": true },
+        {
+          "key": "brief",
+          "label": "Brief",
+          "type": "string",
+          "required": true,
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Lowercase letters, numbers, and hyphens only"
+        },
+        { "key": "backendPlan", "label": "Backend Plan", "type": "url" },
+        { "key": "frontendPlan", "label": "Frontend Plan", "type": "url" },
+        {
+          "key": "baseBranch",
+          "label": "Base Branch",
+          "type": "select",
+          "options": ["master", "main"],
+          "default": "master",
+          "required": true
+        }
+      ],
+      "actions": [
+        {
+          "type": "CreateBranch",
+          "label": "创建 & 生成开发分支",
+          "style": "primary",
+          "validation": "required",
+          "params": {
+            "template": "feature/${meegleId}-${brief}",
+            "baseBranch": "${baseBranch}",
+            "nextStep": "development"
+          }
+        }
+      ]
+    },
+    {
+      "id": "development",
+      "label": "2. Development",
+      "type": "process",
+      "actions": [
+        { "type": "GitCommit", "label": "提交代码", "style": "default" },
+        {
+          "type": "Transition",
+          "label": "提交 & 下一步",
+          "style": "primary",
+          "params": {
+            "tag": "test-feature/${meegleId}-${MMDD}-${hh}-${mm}",
+            "nextStep": "testing"
+          }
+        }
+      ]
+    },
+    {
+      "id": "testing",
+      "label": "3. Testing",
+      "type": "process",
+      "actions": [
+        { "type": "GitCommit", "label": "测试问题修复 & 提交", "style": "default" },
+        {
+          "type": "Transition",
+          "label": "提交 & 下一步",
+          "style": "primary",
+          "params": {
+            "tag": "test-feature/${meegleId}-${MMDD}-${hh}-${mm}",
+            "nextStep": "acceptance"
+          }
+        }
+      ]
+    },
+    {
+      "id": "acceptance",
+      "label": "4. Acceptance",
+      "type": "process",
+      "actions": [
+        { "type": "GitCommit", "label": "验收问题修复 & 提交", "style": "default" },
+        {
+          "type": "Transition",
+          "label": "提交 & 下一步",
+          "style": "primary",
+          "params": {
+            "tag": "stage-feature/${meegleId}-${MMDD}-${hh}-${mm}",
+            "nextStep": "release"
+          }
+        }
+      ]
+    },
+    {
+      "id": "release",
+      "label": "5. Release",
+      "type": "release",
+      "actions": [{ "type": "MergeAndPush", "label": "关联按钮", "style": "primary" }]
+    }
+  ]
+}

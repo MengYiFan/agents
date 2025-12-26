@@ -2,9 +2,10 @@ import * as vscode from 'vscode';
 import { ToWebviewMessage } from '../../common/types';
 import { WorkflowConfigLoader } from './WorkflowConfigLoader';
 import { WorkflowStateManager } from './WorkflowStateManager';
-import { GitService } from '../../services/git/gitService';
+import { GitService } from '../../services/git/GitService';
 import { IWorkflowContext, IActionDefinition } from './types';
 import { getWorkspaceRoot } from '../../shared/workspace/workspaceRoot';
+import { GitWatcher } from '../../services/git/GitWatcher';
 
 /**
  * Controller for the Workflow Webview.
@@ -15,6 +16,7 @@ export class WebviewController implements vscode.Disposable {
   private readonly configLoader: WorkflowConfigLoader;
   private readonly stateManager: WorkflowStateManager;
   private readonly gitService: GitService;
+  private readonly gitWatcher: GitWatcher;
   private readonly root: string;
 
   constructor(
@@ -27,9 +29,11 @@ export class WebviewController implements vscode.Disposable {
     this.configLoader = new WorkflowConfigLoader(this.root);
     this.stateManager = new WorkflowStateManager(this.root);
     this.gitService = new GitService(this.root);
+    this.gitWatcher = new GitWatcher(this.root);
 
     this._setupMessageListener();
     this._setupThemeListener();
+    this._setupGitListener();
   }
 
   private _setupMessageListener() {
@@ -42,26 +46,46 @@ export class WebviewController implements vscode.Disposable {
 
   private _setupThemeListener() {
     this._updateTheme();
+    this._disposables.push(vscode.window.onDidChangeActiveColorTheme(() => this._updateTheme()));
+  }
+
+  // Setup Git Listener to auto-update on branch switch
+  private _setupGitListener() {
+    this._disposables.push(this.gitWatcher);
+
+    // Listen to external git changes (Watcher + Polling)
     this._disposables.push(
-      vscode.window.onDidChangeActiveColorTheme(() => this._updateTheme()),
+      this.gitWatcher.onDidBranchChange(() => {
+        console.log('Git Branch changed (External/Watcher), refreshing context...');
+        this.refreshContext();
+      }),
+    );
+
+    // Also listen to internal git service events (faster response for internal actions)
+    this._disposables.push(
+      this.gitService.onDidBranchChange(() => {
+        console.log('Git Branch changed (Internal), refreshing context...');
+        this.refreshContext();
+      }),
     );
   }
 
   private _updateTheme() {
-    const isDark = [
-      vscode.ColorThemeKind.Dark,
-      vscode.ColorThemeKind.HighContrast,
-    ].includes(vscode.window.activeColorTheme.kind);
+    const kind = vscode.window.activeColorTheme.kind;
+    const isDark =
+      kind === vscode.ColorThemeKind.Dark || kind === vscode.ColorThemeKind.HighContrast;
 
     this.postMessage({
-      type: 'style:set-theme',
-      payload: isDark ? 'dark' : 'light',
+      type: 'themeChanged',
+      theme: { kind: isDark ? 'dark' : 'light' },
     });
   }
 
-  private async _handleMessage(message: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private async _handleMessage(message: any) {
     switch (message.type) {
       case 'webview:ready':
+        this._updateTheme();
         await this.initializeWorkflow();
         break;
       case 'executeAction':
@@ -88,24 +112,60 @@ export class WebviewController implements vscode.Disposable {
       // Check context
       let context = await this.stateManager.loadContext();
 
-      // Logic: If branch does NOT start with 'feature/', we are in Init Mode.
-      const isFeatureBranch = branch.startsWith('feature/');
+      // Validate Context Branch Binding
+      if (context && context.branch && context.branch !== branch) {
+        console.log(
+          `[Workflow] Context branch mismatch (${context.branch} != ${branch}). Resetting context view.`,
+        );
+        context = null;
+      }
+
+      // Logic: Determine if we are in "Development Mode" (Scene B) based on Branch Pattern
+      const devPattern = config.branchPattern?.development || '^feature/.*';
+      const isFeatureBranch = new RegExp(devPattern).test(branch);
+
+      // Clone config to avoid mutating shared state (though configLoader current returns new obj)
+      const dynamicConfig = JSON.parse(JSON.stringify(config));
 
       if (!isFeatureBranch) {
-        // Force 'init' step context for virtual view
+        // Scene A: Non-Dev Branch.
+        // Force 'init' step context for virtual view if needed, but usually we just stay on step 0.
         context = {
           currentStep: 'init',
           history: [],
           data: { ...context?.data },
+          branch: branch,
           lastUpdated: Date.now(),
         };
       } else {
-        // If context is missing on feature branch, init to 'development'
+        // Scene B: Feature Branch.
+        // Update Init Step actions to be "Save & Next" instead of "Create Branch"
+        const initStep = dynamicConfig.steps.find((s: any) => s.id === 'init');
+        if (initStep) {
+          initStep.actions = [
+            {
+              type: 'LoadStep',
+              label: 'Save & Next',
+              style: 'primary',
+              params: { stepId: 'development' },
+            },
+            {
+              type: 'LoadStep',
+              label: 'Next',
+              style: 'default',
+              params: { stepId: 'development' },
+            },
+          ];
+        }
+
+        // If context is missing on feature branch, init to 'development' (or whatever the config says is next after init?)
+        // Ideally we should find the step that matches the current flow. For now, defaulting to 'development' is fine as per PRD logic.
         if (!context) {
           context = {
             currentStep: 'development',
             history: [],
             data: {},
+            branch: branch,
             lastUpdated: Date.now(),
           };
         }
@@ -117,18 +177,24 @@ export class WebviewController implements vscode.Disposable {
       this.postMessage({
         type: 'workflow:init',
         payload: {
-          config,
+          config: dynamicConfig,
           context,
           gitBranch: branch,
           releaseBranches,
         },
       });
-    } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      // eslint-disable-line @typescript-eslint/no-explicit-any
       vscode.window.showErrorMessage(`Workflow Init Failed: ${error.message || error}`);
     }
   }
 
-  private async handleExecuteAction(payload: { action: IActionDefinition; stepId: string; data: any }) { // eslint-disable-line @typescript-eslint/no-explicit-any
+  private async handleExecuteAction(payload: {
+    action: IActionDefinition;
+    stepId: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    data: any;
+  }) {
     const { action, stepId, data } = payload;
 
     try {
@@ -139,6 +205,11 @@ export class WebviewController implements vscode.Disposable {
         data: {},
         lastUpdated: Date.now(),
       };
+
+      // Ensure history exists (migrating old contexts if necessary)
+      if (!currentContext.history) {
+        currentContext.history = [];
+      }
 
       // Merge new data
       currentContext.data = { ...currentContext.data, ...data };
@@ -166,7 +237,8 @@ export class WebviewController implements vscode.Disposable {
 
       // After successful action, reload
       await this.refreshContext();
-    } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      // eslint-disable-line @typescript-eslint/no-explicit-any
       vscode.window.showErrorMessage(`Action Failed: ${error.message}`);
     }
   }
@@ -176,28 +248,46 @@ export class WebviewController implements vscode.Disposable {
     const branchName = this.interpolate(template, context.data);
     const base = context.data.baseBranch || action.params?.baseBranch || 'master';
 
-    // 1. Dirty Check
-    const isClean = await this.gitService.checkGitStatus();
-    if (!isClean) {
-      const choice = await vscode.window.showWarningMessage(
-        'Working directory is not clean.',
-        'Stash & Continue',
-        'Cancel'
+    // 1. Check if branch already exists
+    const exists = await this.gitService.branchExists(branchName);
+    if (exists) {
+      const selection = await vscode.window.showWarningMessage(
+        `Branch '${branchName}' already exists.`,
+        'Switch to Existing Branch',
+        'Cancel',
       );
-      if (choice === 'Stash & Continue') {
-        await this.gitService.stashChanges();
+
+      if (selection === 'Switch to Existing Branch') {
+        await this.gitService.checkout(branchName);
+        // Continue to update context as if we just created it
       } else {
-        return; // Abort
+        return; // Cancel action
       }
+    } else {
+      // 2. Dirty Check
+      const isClean = await this.gitService.checkGitStatus();
+      if (!isClean) {
+        const choice = await vscode.window.showWarningMessage(
+          'Working directory is not clean.',
+          'Stash & Continue',
+          'Cancel',
+        );
+        if (choice === 'Stash & Continue') {
+          await this.gitService.stashChanges();
+        } else {
+          return; // Abort
+        }
+      }
+
+      // 3. Checkout -b
+      await this.gitService.checkoutNewBranch(base, branchName);
     }
 
-    // 2. Checkout -b
-    await this.gitService.checkoutNewBranch(base, branchName);
-
-    // 3. Initialize Context for new branch
+    // 4. Initialize Context for new branch
     const nextStep = action.params?.nextStep || 'development';
 
     context.currentStep = nextStep;
+    context.branch = branchName;
     context.history.push({
       timestamp: Date.now(),
       action: 'CreateBranch',
@@ -208,17 +298,30 @@ export class WebviewController implements vscode.Disposable {
     // Write context
     await this.stateManager.saveContext(context);
 
-    // Commit context
-    await this.gitService.commit('docs: init workflow context');
+    // Commit context (only if new branch created or context changed significantly?)
+    // If we switched to existing, we probably shouldn't force a commit unless we want to update the context file there.
+    // For consistency, let's just save context. If it checks out, the context file on disk might be old or new.
+    // We overwrote it with `saveContext`.
+
+    // Commit context if we are on the branch
+    try {
+      await this.gitService.commit('docs: init workflow context');
+    } catch (e) {
+      // Ignore "nothing to commit" if we just switched to existing branch and nothing changed
+      console.warn('Commit failed (likely nothing to commit)', e);
+    }
   }
 
-  private async handleGitCommit(action: IActionDefinition, context: IWorkflowContext) { // eslint-disable-line @typescript-eslint/no-unused-vars
+  private async handleGitCommit(action: IActionDefinition, _context: IWorkflowContext) {
+    // eslint-disable-line @typescript-eslint/no-unused-vars
     const prefix = action.params?.prefix || '';
     const msg = await vscode.window.showInputBox({
       prompt: 'Enter commit message',
       value: prefix,
     });
-    if (!msg) { return; }
+    if (!msg) {
+      return;
+    }
 
     await this.gitService.commit(msg);
     vscode.window.showInformationMessage('Commit successful');
@@ -278,7 +381,8 @@ export class WebviewController implements vscode.Disposable {
     }
   }
 
-  private async handleMergeAndPush(action: IActionDefinition, context: IWorkflowContext) { // eslint-disable-line @typescript-eslint/no-unused-vars
+  private async handleMergeAndPush(action: IActionDefinition, context: IWorkflowContext) {
+    // eslint-disable-line @typescript-eslint/no-unused-vars
     let targetBranch = context.data.targetBranch;
     if (!targetBranch) {
       // Try to discover
@@ -295,11 +399,14 @@ export class WebviewController implements vscode.Disposable {
 
     try {
       await this.gitService.mergeAndPush(currentFeature, targetBranch);
-      vscode.window.showInformationMessage(`Successfully merged ${currentFeature} into ${targetBranch}`);
-    } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+      vscode.window.showInformationMessage(
+        `Successfully merged ${currentFeature} into ${targetBranch}`,
+      );
+    } catch (error: any) {
+      // eslint-disable-line @typescript-eslint/no-explicit-any
       if (error.type === 'Conflict') {
         vscode.window.showErrorMessage(
-          'Merge Conflict detected. Please resolve manually then commit & push.'
+          'Merge Conflict detected. Please resolve manually then commit & push.',
         );
       } else {
         throw error;
@@ -308,30 +415,67 @@ export class WebviewController implements vscode.Disposable {
   }
 
   private async refreshContext() {
-    const config = await this.configLoader.loadConfig(); // eslint-disable-line @typescript-eslint/no-unused-vars
+    const config = await this.configLoader.loadConfig();
     // Check current branch
     let branch = 'unknown';
     try {
       branch = await this.gitService.getCurrentBranch();
-    } catch (e) { /* empty */ }
+    } catch (e) {
+      /* empty */
+    }
 
     let context = await this.stateManager.loadContext();
+
+    // Validate Context Branch Binding
+    if (context && context.branch && context.branch !== branch) {
+      console.log(
+        `[Workflow] Context branch mismatch (${context.branch} != ${branch}). Resetting context view.`,
+      );
+      context = null;
+    }
+
     const isFeatureBranch = branch.startsWith('feature/');
+
+    // Clone config
+    const dynamicConfig = JSON.parse(JSON.stringify(config));
 
     if (!isFeatureBranch) {
       context = {
         currentStep: 'init',
         history: [],
         data: { ...context?.data },
+        branch: branch,
         lastUpdated: Date.now(),
       };
-    } else if (!context) {
-      context = {
-        currentStep: 'development',
-        history: [],
-        data: {},
-        lastUpdated: Date.now(),
-      };
+    } else {
+      // Scene B: Feature Branch. Update Init Step actions.
+      const initStep = dynamicConfig.steps.find((s: any) => s.id === 'init');
+      if (initStep) {
+        initStep.actions = [
+          {
+            type: 'LoadStep',
+            label: 'Save & Next',
+            style: 'primary',
+            params: { stepId: 'development' },
+          },
+          {
+            type: 'LoadStep',
+            label: 'Next',
+            style: 'default',
+            params: { stepId: 'development' },
+          },
+        ];
+      }
+
+      if (!context) {
+        context = {
+          currentStep: 'development',
+          history: [],
+          data: {},
+          branch: branch,
+          lastUpdated: Date.now(),
+        };
+      }
     }
 
     // Fetch release branches
@@ -339,11 +483,12 @@ export class WebviewController implements vscode.Disposable {
 
     this.postMessage({
       type: 'workflow:update',
-      payload: { context, gitBranch: branch, releaseBranches },
+      payload: { context, gitBranch: branch, releaseBranches, config: dynamicConfig },
     });
   }
 
-  private interpolate(str: string, data: any): string { // eslint-disable-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private interpolate(str: string, data: any): string {
     return str.replace(/\$\{(\w+)\}/g, (_, key) => data[key] || '');
   }
 

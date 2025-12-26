@@ -9,6 +9,7 @@ export type Theme = 'light' | 'dark';
  */
 export type ToWebviewMessage = 
   | { type: 'style:set-theme'; payload: Theme }
+  | { type: 'themeChanged'; theme: { kind: string } }
   | { type: 'workflow:init'; payload: any }
   | { type: 'workflow:update'; payload: any };
 

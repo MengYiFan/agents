@@ -1,0 +1,152 @@
+/* WorkflowRenderer System Styles - Adapts to VS Code Theme */
+
+html.light .workflow-init-card {
+  background-color: #f7f7f8 !important;
+}
+
+/* Layout & Containers */
+.workflow-init-layout {
+  min-height: 100vh;
+  /* CHANGE: Use transparent to let App.tsx background (valid theme color) show */
+  background: transparent !important;
+  overflow-y: auto;
+  position: relative; /* For absolute positioning of action bar */
+}
+
+.workflow-init-content {
+  padding: 24px;
+  padding-bottom: 80px; /* Space for action bar */
+}
+
+.workflow-init-card-container {
+  max-width: 800px;
+  margin: 24px auto;
+}
+
+.workflow-init-card {
+  text-align: left;
+  /* Override AntD default white background */
+  background: var(--vscode-editorWidget-background) !important;
+  box-shadow:
+    0 1px 2px 0 rgba(0, 0, 0, 0.03),
+    0 1px 6px -1px rgba(0, 0, 0, 0.02),
+    0 2px 4px 0 rgba(0, 0, 0, 0.02);
+}
+
+/* Development View Layout */
+.workflow-dev-layout {
+  height: 100%;
+  background: var(--vscode-sideBar-background);
+  display: flex;
+  flex-direction: column;
+  position: relative; /* For absolute positioning of action bar */
+  overflow: auto;
+}
+
+/* Steps Bar (Top Fixed) */
+.workflow-steps-header {
+  background: var(--vscode-editor-background);
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--vscode-input-border);
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.workflow-steps {
+  margin-bottom: 0 !important;
+  background: transparent !important;
+}
+
+/* Responsive Steps: Hide label on small screens */
+@media (max-width: 500px) {
+  .workflow-steps .ant-steps-item-title {
+    display: none !important;
+  }
+}
+
+/* Main Scrollable Content */
+.workflow-main-content {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+  scroll-behavior: smooth;
+}
+
+.workflow-inner-content {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.workflow-status-card {
+  margin-bottom: 16px;
+  background: var(--vscode-editorWidget-background) !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+}
+
+/* Action Bar (Bottom Fixed) */
+.workflow-action-bar {
+  position: fixed; /* Pin to bottom */
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--vscode-editor-background);
+  padding: 12px 24px;
+  /* CHANGE: Top border shadow to enhance separation */
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+  border-top: 1px solid var(--vscode-input-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 100; /* Ensure high z-index */
+  gap: 12px; /* Space between buttons */
+}
+
+/* Ensure content has padding bottom so it doesn't get hidden behind action bar */
+.workflow-main-content {
+  padding: 16px;
+  padding-bottom: 80px; /* Add padding for action bar */
+  overflow-y: auto;
+  flex: 1;
+  scroll-behavior: smooth;
+}
+
+.workflow-action-line-text {
+  font-size: 12px;
+  /* If space is tight, we might hide this or wrap it */
+  display: none; /* User requested Action Bar buttons to be full width/block. Text might interfere. */
+}
+
+/* Make buttons full width in action bar */
+.workflow-action-bar .ant-space {
+  width: 100%;
+  display: flex;
+}
+
+.workflow-action-bar .ant-space-item {
+  flex: 1; /* Distribute space equally (50% split) */
+  display: flex;
+}
+
+.workflow-action-bar button {
+  width: 100%; /* Block level */
+  display: block;
+}
+
+/* Specific Step Styles */
+.workflow-process-step {
+  text-align: center;
+  padding: 40px 0;
+}
+
+.workflow-release-alert {
+  margin-bottom: 24px;
+}
+
+.workflow-init-alert {
+  margin-bottom: 16px;
+}
+
+.workflow-form-actions-right {
+  display: flex;
+  justify-content: flex-end;
+}

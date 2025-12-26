@@ -5,8 +5,8 @@ import {
   DEFAULT_DOC_DIRECTORIES,
   loadDocContent,
 } from '../../../services/docs/documentService';
-import { checkoutBranch } from '../../../services/git/gitOperations';
-import { executeLifecycleAction } from '../../../services/git/lifecycleAutomation';
+// import { checkoutBranch } from '../../../services/git/gitOperations';
+// import { executeLifecycleAction } from '../../../services/git/lifecycleAutomation';
 import type { LifecycleStage, McpDocEntry, StageAction, SupportedLanguage } from '../../../types';
 import { getWorkspaceRoot } from '../../../shared/workspace/workspaceRoot';
 import { getWebviewHtml } from '../webview/htmlFactory';
@@ -16,10 +16,11 @@ import { executeInstructionAction } from '../../../services/instructions/instruc
 import { getAuthorizationStatuses } from '../../../services/auth/authorizationStatusService';
 import { getUiText, resolveSupportedLanguage } from '../../../shared/localization/i18n';
 import type { UiText } from '../../../shared/localization/i18n';
-import { GitService, GitInfo } from '../../../services/git/gitService';
+import { GitService, GitInfo } from '../../../services/git/GitService';
 import { WorkflowService } from '../../../services/workflow/workflowService';
 import type { WorkflowStageId } from '../../../services/workflow/workflowService';
 import { AgentService } from '../../../services/mcp/agentService';
+import { WebviewController } from '../../workflow/WebviewController';
 
 interface WebviewMessage {
   type:
@@ -55,12 +56,9 @@ interface WebviewMessage {
   message?: string;
 }
 
-import { WebviewController } from '../../workflow/WebviewController';
-
 export class VisualizerViewProvider implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView;
   private workflowController?: WebviewController;
-
 
   private docs: McpDocEntry[] = [];
 
@@ -98,7 +96,7 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
           gitInfo,
           workflow: workflowData,
         });
-      })
+      }),
     );
   }
 
@@ -119,7 +117,7 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
       this.uiText,
       this.locale,
     );
-    
+
     // Initialize Workflow Controller
     this.workflowController = new WebviewController(webviewView.webview, this.context);
 
@@ -147,7 +145,8 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
           break;
         case 'checkoutBranch':
           if (message.branch) {
-            await checkoutBranch(getWorkspaceRoot(), message.branch);
+            // await checkoutBranch(getWorkspaceRoot(), message.branch);
+            await this.gitService.checkout(message.branch);
           }
           break;
         case 'switchStage':
@@ -179,7 +178,6 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
               await this.runStageAction(stage, action, 'manual');
             }
           }
-          break;
           break;
         case 'startWorkflow':
           if (message.branch) {
@@ -247,35 +245,35 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
     const searchPaths =
       vscode.workspace.getConfiguration('mcpVisualizer').get<string[]>('docSearchPaths') ??
       DEFAULT_DOC_DIRECTORIES;
-    
+
     // Use AgentService to fetch agents
     const agentService = new AgentService();
     try {
-        this.docs = await agentService.getAgents();
+      this.docs = await agentService.getAgents();
     } catch (error) {
-        console.error('Failed to fetch agents:', error);
-        this.docs = [];
+      console.error('Failed to fetch agents:', error);
+      this.docs = [];
     }
 
     // Fallback to file scanning if no agents found (optional, or just replace entirely)
     if (this.docs.length === 0) {
-        try {
-            this.docs = await collectDocs(workspaceRoot, searchPaths);
-        } catch (error) {
-            console.error('Failed to collect docs:', error);
-            this.docs = [];
-        }
+      try {
+        this.docs = await collectDocs(workspaceRoot, searchPaths);
+      } catch (error) {
+        console.error('Failed to collect docs:', error);
+        this.docs = [];
+      }
     }
 
     const firstDoc: McpDocEntry | undefined = this.docs[0];
     const initialVariant = firstDoc
       ? this.selectVariant(firstDoc, firstDoc.defaultLanguage)
       : undefined;
-    
+
     // For API-sourced agents, content is already in the variant
-    const initialContent = initialVariant 
-        ? (initialVariant.content || await loadDocContent(initialVariant.filePath)) 
-        : '';
+    const initialContent = initialVariant
+      ? initialVariant.content || (await loadDocContent(initialVariant.filePath))
+      : '';
 
     const webview = this.view?.webview;
     const initialStage = this.resolveInitialStage();
@@ -289,16 +287,16 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
     let releaseBranches: string[] = [];
 
     try {
-        gitInfo = await gitService.getGitInfo();
-        releaseBranches = await gitService.listReleaseBranches();
+      gitInfo = await gitService.getGitInfo();
+      releaseBranches = await gitService.listReleaseBranches();
     } catch (error) {
-        console.warn('Failed to load git info:', error);
-        gitInfo = {
-            currentBranch: '',
-            isClean: true,
-            uncommittedChanges: 0,
-            hasUncommitted: false,
-        };
+      console.warn('Failed to load git info:', error);
+      gitInfo = {
+        currentBranch: '',
+        isClean: true,
+        uncommittedChanges: 0,
+        hasUncommitted: false,
+      };
     }
 
     // Get workflow data
@@ -317,7 +315,7 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
           label: variant.label,
         })),
         // Pass content directly if available (for API agents)
-        content: doc.variants[0]?.content
+        content: doc.variants[0]?.content,
       })),
       initialDocId: firstDoc?.id,
       initialLanguage: initialVariant?.language ?? firstDoc?.defaultLanguage,
@@ -396,11 +394,11 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
 
     let html = '';
     if (variant.content) {
-        html = variant.content;
+      html = variant.content;
     } else {
-        html = await loadDocContent(variant.filePath);
+      html = await loadDocContent(variant.filePath);
     }
-    
+
     this.postMessage({ type: 'docContent', id: docId, language: variant.language, html });
   }
 
@@ -475,7 +473,15 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
       }
     }
 
-    const result = await executeLifecycleAction(workspaceRoot, action.id);
+    // const result = await executeLifecycleAction(workspaceRoot, action.id);
+    // Placeholder for missing LifecycleAutomation
+    const result = {
+      success: false,
+      message: 'Automated actions are temporarily disabled.',
+      executedCommands: [],
+      cancelled: false,
+    };
+
     const status = result.cancelled ? 'cancelled' : result.success ? 'success' : 'error';
 
     if (status === 'success') {

@@ -10,12 +10,10 @@ import {
   Descriptions,
   Alert,
   App,
-  theme,
   Layout,
   Space,
   Typography,
   Tag,
-  Divider,
 } from 'antd';
 import {
   IWorkflowConfig,
@@ -25,16 +23,17 @@ import {
   IStepDefinition,
 } from '../types/workflow';
 import { usePostMessage } from '../hooks/useVscodeMessage';
-import { 
-    RocketOutlined, 
-    GithubOutlined, 
-    CheckCircleOutlined, 
-    BranchesOutlined,
-    PlayCircleOutlined
+import {
+  RocketOutlined,
+  GithubOutlined,
+  CheckCircleOutlined,
+  BranchesOutlined,
+  PlayCircleOutlined,
 } from '@ant-design/icons';
+import './WorkflowRenderer.css';
 
 const { Content } = Layout;
-const { Title, Text, Paragraph } = Typography;
+const { Title, Paragraph } = Typography;
 
 interface WorkflowRendererProps {
   config: IWorkflowConfig;
@@ -52,8 +51,10 @@ export const WorkflowRenderer: React.FC<WorkflowRendererProps> = ({
   const postMessage = usePostMessage();
   const [form] = Form.useForm();
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
-  const { token } = theme.useToken();
   const { message } = App.useApp();
+
+  // State to control Init View (View A) vs Basic Info Form
+  const [showInitForm, setShowInitForm] = useState(false);
 
   // Sync form data from context
   useEffect(() => {
@@ -67,7 +68,9 @@ export const WorkflowRenderer: React.FC<WorkflowRendererProps> = ({
   const currentStep: IStepDefinition = config.steps[currentStepIndex] || config.steps[0];
 
   // Determine View Mode
-  const isInitView = currentStepId === 'init';
+  // If branch starts with 'feature/', we are in Dev View.
+  const isDevBranch = gitBranch && gitBranch.startsWith('feature/');
+  // If not dev branch, we defaults to Init View Logic
 
   const handleAction = async (action: IActionDefinition) => {
     try {
@@ -91,10 +94,6 @@ export const WorkflowRenderer: React.FC<WorkflowRendererProps> = ({
         formData = form.getFieldsValue();
       }
 
-      // Special handling for Rollback input (backend handles it usually, but we can pass flag)
-      // Special handling for MergeAndPush: we need targetBranch if not in formData?
-      // If renderReleaseStep uses Form, it is in formData.
-
       setLoadingAction(action.type);
 
       postMessage({
@@ -106,7 +105,7 @@ export const WorkflowRenderer: React.FC<WorkflowRendererProps> = ({
         },
       });
 
-      // Clear loading after timeout or context update (context update resets via Refresh probably)
+      // Clear loading after timeout
       setTimeout(() => setLoadingAction(null), 8000);
     } catch (error) {
       console.error('Validation failed:', error);
@@ -169,14 +168,18 @@ export const WorkflowRenderer: React.FC<WorkflowRendererProps> = ({
     if (!currentStep.actions?.length) return null;
 
     if (isInline) {
-         return (
-            <Space>
-                {currentStep.actions.map((action, idx) => {
-                    const props = getActionProps(action);
-                    return <Button key={idx} {...props}>{action.label}</Button>
-                })}
-            </Space>
-         );
+      return (
+        <Space>
+          {currentStep.actions.map((action, idx) => {
+            const props = getActionProps(action);
+            return (
+              <Button key={idx} {...props}>
+                {action.label}
+              </Button>
+            );
+          })}
+        </Space>
+      );
     }
 
     return (
@@ -184,10 +187,7 @@ export const WorkflowRenderer: React.FC<WorkflowRendererProps> = ({
         {currentStep.actions.map((action, idx) => {
           const props = getActionProps(action);
           return (
-            <Button
-              key={idx}
-              {...props}
-            >
+            <Button key={idx} {...props} block>
               {action.label}
             </Button>
           );
@@ -197,62 +197,96 @@ export const WorkflowRenderer: React.FC<WorkflowRendererProps> = ({
   };
 
   const getActionProps = (action: IActionDefinition) => {
-      let btnType: any = 'default';
-      let danger = false;
+    let btnType: any = 'default';
+    let danger = false;
 
-      // Map config styles to AntD Button props
-      if (action.style === 'primary') btnType = 'primary';
-      else if (action.style === 'danger') { btnType = 'primary'; danger = true; }
-      else if (action.style === 'ghost') btnType = 'text';
-      else if (action.style === 'link') btnType = 'link';
+    // Map config styles to AntD Button props
+    if (action.style === 'primary') btnType = 'primary';
+    else if (action.style === 'danger') {
+      btnType = 'primary';
+      danger = true;
+    } else if (action.style === 'ghost') btnType = 'text';
+    else if (action.style === 'link') btnType = 'link';
 
-      // Icons
-      let icon = undefined;
-      if (action.type === 'GitCommit') icon = <CheckCircleOutlined />;
-      else if (action.type === 'Transition') icon = <RocketOutlined />;
-      else if (action.type === 'CreateBranch') icon = <BranchesOutlined />;
-      else if (action.type === 'MergeAndPush') icon = <GithubOutlined />;
-      
-      return {
-          type: btnType,
-          danger,
-          icon,
-          onClick: () => handleAction(action),
-          loading: loadingAction === action.type,
-          disabled: loadingAction !== null
-      };
-  }
+    // Icons
+    let icon = undefined;
+    if (action.type === 'GitCommit') icon = <CheckCircleOutlined />;
+    else if (action.type === 'Transition') icon = <RocketOutlined />;
+    else if (action.type === 'CreateBranch') icon = <BranchesOutlined />;
+    else if (action.type === 'MergeAndPush') icon = <GithubOutlined />;
+
+    return {
+      type: btnType,
+      danger,
+      icon,
+      onClick: () => handleAction(action),
+      loading: loadingAction === action.type,
+      disabled: loadingAction !== null,
+    };
+  };
 
   // View A: Initialization
-  // Renders the 'form' step (init)
+  // Renders the Landing View (View A) OR the Form Step (Step 1 Basic Info)
   const renderInitView = () => {
-    return (
-      <div style={{ maxWidth: 800, margin: '24px auto' }}>
-        <Card
+    // If we are on non-dev branch and haven't started (showInitForm is false), show View A (Landing)
+    if (!showInitForm) {
+      return (
+        <div className="workflow-init-card-container">
+          <Card
             bordered={false}
-            style={{ 
-                boxShadow: token.boxShadowSecondary,
-                textAlign: 'left' // Form usually left aligned, but container is centered
-            }}
-            title={<Space><PlayCircleOutlined /> {currentStep.label}</Space>}
-        >
-             <Alert 
-                message="Workflow Initialization"
-                description={`You are on branch "${gitBranch}". Please provide details to start a new development workflow.`}
-                type="info"
-                showIcon
-                style={{ marginBottom: 16 }}
-             />
-             
-             <Form form={form} layout="vertical">
-                 {currentStep.fields?.map(renderField)}
-             </Form>
+            className="workflow-init-card"
+            style={{ textAlign: 'center', padding: '40px 0' }}
+          >
+            <Space direction="vertical" size="large">
+              <div style={{ fontSize: 48, color: 'var(--vscode-textLink-foreground)' }}>
+                <PlayCircleOutlined />
+              </div>
+              <Title level={3}>Start New Workflow</Title>
+              <Paragraph type="secondary">
+                You are currently on <strong>{gitBranch}</strong>. Initiate a new development task
+                to create a feature branch.
+              </Paragraph>
 
-             <Divider />
-             
-             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                 {renderActionButtons(true)}
-             </div>
+              {/* This button transitions from View A to Step 1 (Basic Info Form) */}
+              <Button
+                type="primary"
+                size="large"
+                onClick={() => {
+                  form.resetFields();
+                  setShowInitForm(true);
+                }}
+              >
+                Initialize Workflow
+              </Button>
+            </Space>
+          </Card>
+        </div>
+      );
+    }
+
+    // Step 1: Basic Info Form
+    return (
+      <div className="workflow-init-card-container">
+        <Card
+          bordered={false}
+          className="workflow-init-card"
+          title={
+            <Space>
+              <PlayCircleOutlined /> {currentStep.label}
+            </Space>
+          }
+        >
+          <Alert
+            message="Workflow Initialization"
+            description="Please fill in the details to create your development branch."
+            type="info"
+            showIcon
+            className="workflow-init-alert"
+          />
+
+          <Form form={form} layout="vertical">
+            {currentStep.fields?.map(renderField)}
+          </Form>
         </Card>
       </div>
     );
@@ -260,160 +294,126 @@ export const WorkflowRenderer: React.FC<WorkflowRendererProps> = ({
 
   // View B: Development Steps
   const renderDevView = () => {
-     // Filter steps to exclude 'init' from the Steps bar if strictly separating views.
-     const devSteps = config.steps.filter(s => s.id !== 'init');
-     const stepsCurrent = devSteps.findIndex(s => s.id === currentStepId);
+    // Determine steps for steps bar. Assuming we include all steps.
+    const stepsCurrent = config.steps.findIndex((s) => s.id === currentStepId);
 
-     return (
-        <Layout style={{ height: '100vh', background: token.colorBgLayout, display: 'flex', flexDirection: 'column' }}>
-             {/* Top: Steps - Pinned */}
-             <div style={{
-                 background: token.colorBgContainer,
-                 padding: '8px 16px',
-                 borderBottom: `1px solid ${token.colorBorderSecondary}`,
-                 flexShrink: 0,
-                 zIndex: 10
-             }}>
-                 <Steps
-                    type="navigation"
-                    size="small"
-                    current={stepsCurrent}
-                    items={devSteps.map(s => ({
-                        title: s.label,
-                        icon: s.type === 'release' ? <RocketOutlined/> : undefined
-                    }))}
-                    className="site-navigation-steps"
-                    style={{ 
-                        marginBottom: 0,
-                        boxShadow: 'none',
-                        background: 'transparent'
-                    }}
-                 />
-             </div>
+    return (
+      <Layout className="workflow-dev-layout">
+        {/* Top: Steps - Pinned */}
+        <div className="workflow-steps-header">
+          <Steps
+            type="navigation"
+            size="small"
+            current={stepsCurrent}
+            items={config.steps.map((s) => ({
+              title: s.label,
+              icon: s.type === 'release' ? <RocketOutlined /> : undefined,
+            }))}
+            className="site-navigation-steps workflow-steps"
+            responsive={false} // We handle responsiveness via CSS
+          />
+        </div>
 
-             {/* Middle: Content - Scrollable */}
-             <Content style={{ 
-                 padding: '16px', 
-                 overflowY: 'auto', 
-                 flex: 1,
-                 scrollBehavior: 'smooth'
-             }}>
-                 <div style={{ maxWidth: 900, margin: '0 auto' }}>
-                     {/* Status Header */}
-                     <Card 
-                        size="small" 
-                        bordered={false}
-                        style={{ marginBottom: 16, boxShadow: token.boxShadowTertiary }}
-                    >
-                         <Descriptions title="Current Context" size="small" column={2}>
-                             <Descriptions.Item label="Step">{currentStep.label}</Descriptions.Item>
-                             <Descriptions.Item label="Branch"><Tag icon={<GithubOutlined/>}>{gitBranch}</Tag></Descriptions.Item>
-                             {context.data.meegleId && (
-                                <Descriptions.Item label="Meegle ID">{context.data.meegleId}</Descriptions.Item>
-                             )}
-                             {context.data.brief && (
-                                 <Descriptions.Item label="Brief">{context.data.brief}</Descriptions.Item>
-                             )}
-                         </Descriptions>
-                     </Card>
+        {/* Middle: Content - Scrollable */}
+        <Content className="workflow-main-content">
+          <div className="workflow-inner-content">
+            {/* Status Header */}
+            {/* UPDATED: Descriptions column={1} */}
+            <Card size="small" bordered={false} className="workflow-status-card">
+              <Descriptions title="Current Context" size="small" column={1}>
+                <Descriptions.Item label="Step">{currentStep.label}</Descriptions.Item>
+                <Descriptions.Item label="Branch">
+                  <Tag icon={<GithubOutlined />}>{gitBranch}</Tag>
+                </Descriptions.Item>
+                {context.data.meegleId && (
+                  <Descriptions.Item label="Meegle ID">{context.data.meegleId}</Descriptions.Item>
+                )}
+                {context.data.brief && (
+                  <Descriptions.Item label="Brief">{context.data.brief}</Descriptions.Item>
+                )}
+              </Descriptions>
+            </Card>
 
-                     {/* Step Content */}
-                     {renderStepContent()}
-                 </div>
-             </Content>
+            {/* Step Content */}
+            {renderStepContent()}
+          </div>
+        </Content>
 
-             {/* Bottom: Actions - Pinned */}
-             <div style={{
-                 background: token.colorBgContainer,
-                 padding: '12px 24px',
-                 borderTop: `1px solid ${token.colorBorderSecondary}`,
-                 display: 'flex',
-                 justifyContent: 'space-between',
-                 alignItems: 'center',
-                 flexShrink: 0,
-                 zIndex: 10
-             }}>
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                      {currentStep.id === 'release' ? 'Final Stage' : 'Development in Progress'}
-                  </Text>
-                  {renderActionButtons()}
-             </div>
-        </Layout>
-     );
+        {/* Bottom: Actions - Pinned */}
+        <div className="workflow-action-bar">
+          {/* We hid the text via CSS to allow full width buttons */}
+          {renderActionButtons()}
+        </div>
+      </Layout>
+    );
   };
 
   const renderStepContent = () => {
-      // Dynamic rendering based on type
-      if (currentStep.type === 'process') {
-          // Process steps (Dev, Test, Acceptance) have no fields in v6.0.
-          // Just show instructions or status.
-          return (
-              <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                   <Title level={4}>In Progress: {currentStep.label}</Title>
-                   <Paragraph type="secondary">
-                       Make your changes, commit code, and when ready, proceed to the next stage.
-                       Make sure your Git status is clean before transitioning.
-                   </Paragraph>
-                   
-                   {/* We could show specific alerts if dirty? But frontend validates on action click mostly. */}
-              </div>
-          );
-      } 
-      
-      if (currentStep.type === 'release') {
-          // Release Step specific UI
-          return (
-             <Card bordered={false} title="Release Configuration">
-                  <Alert 
-                    message="Merge & Release"
-                    description="Select the target release branch to merge your changes into."
-                    type="warning"
-                    showIcon
-                    style={{ marginBottom: 24 }}
-                  />
-                  <Form form={form} layout="vertical">
-                       <Form.Item 
-                            name="targetBranch" 
-                            label="Target Release Branch" 
-                            rules={[{required: true, message: 'Please select a release branch'}]}
-                            tooltip="The branch where this feature will be merged."
-                       >
-                            <Select 
-                                placeholder="Select branch (e.g. release/v6.0)" 
-                                options={releaseBranches.map(b => ({ label: b, value: b }))}
-                                // If list is empty, maybe allow generic input? Or show empty state.
-                                notFoundContent={releaseBranches.length === 0 ? "No release branches found" : undefined}
-                            />
-                       </Form.Item>
-                  </Form>
-             </Card>
-          );
-      }
+    // Dynamic rendering based on type
+    if (currentStep.type === 'process') {
+      return (
+        <div className="workflow-process-step">
+          <Title level={4}>In Progress: {currentStep.label}</Title>
+          <Paragraph type="secondary">
+            Make your changes, commit code, and when ready, proceed to the next stage. Make sure
+            your Git status is clean before transitioning.
+          </Paragraph>
+        </div>
+      );
+    }
 
-      if (currentStep.type === 'form') {
-           // Should not really happen in Dev View unless there is a form step inside dev flow?
-           // Just in case:
-           return (
-               <Card bordered={false} title={currentStep.label}>
-                   <Form form={form} layout="vertical">
-                      {currentStep.fields?.map(renderField)}
-                   </Form>
-               </Card>
-           );
-      }
+    if (currentStep.type === 'release') {
+      // Release Step specific UI
+      return (
+        <Card bordered={false} title="Release Configuration">
+          <Alert
+            message="Merge & Release"
+            description="Select the target release branch to merge your changes into."
+            type="warning"
+            showIcon
+            className="workflow-release-alert"
+          />
+          <Form form={form} layout="vertical">
+            <Form.Item
+              name="targetBranch"
+              label="Target Release Branch"
+              rules={[{ required: true, message: 'Please select a release branch' }]}
+              tooltip="The branch where this feature will be merged."
+            >
+              <Select
+                placeholder="Select branch (e.g. release/v6.0)"
+                options={releaseBranches.map((b) => ({ label: b, value: b }))}
+                notFoundContent={
+                  releaseBranches.length === 0 ? 'No release branches found' : undefined
+                }
+              />
+            </Form.Item>
+          </Form>
+        </Card>
+      );
+    }
 
-      return null;
+    if (currentStep.type === 'form') {
+      return (
+        <Card bordered={false} title={currentStep.label}>
+          <Form form={form} layout="vertical">
+            {currentStep.fields?.map(renderField)}
+          </Form>
+        </Card>
+      );
+    }
+
+    return null;
   };
 
   // Main Render
-  if (isInitView) {
-      return (
-          <Layout style={{ minHeight: '100vh', background: token.colorBgLayout, overflowY: 'auto' }}>
-               <Content style={{ padding: 24 }}>
-                   {renderInitView()}
-               </Content>
-          </Layout>
-      );
+  if (!isDevBranch) {
+    return (
+      <Layout className="workflow-init-layout">
+        <Content className="workflow-init-content">{renderInitView()}</Content>
+        {showInitForm && <div className="workflow-action-bar">{renderActionButtons()}</div>}
+      </Layout>
+    );
   }
 
   return renderDevView();

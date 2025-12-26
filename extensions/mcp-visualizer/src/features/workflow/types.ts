@@ -8,9 +8,9 @@ export interface IFieldDefinition {
   placeholder?: string;
   description?: string;
   options?: string[]; // For select
-  pattern?: string;   // Regex string
+  pattern?: string; // Regex string
   defaultValue?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
-  default?: any;      // eslint-disable-line @typescript-eslint/no-explicit-any
+  default?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 export interface IActionDefinition {
@@ -39,7 +39,7 @@ export interface IActionDefinition {
 }
 
 export interface IUiElements {
-  infoText?: string;     // Top alert/info
+  infoText?: string; // Top alert/info
   displayFields?: string[]; // Fields from data to display in card
 }
 
@@ -47,19 +47,21 @@ export interface IStepDefinition {
   id: string;
   label: string;
   type: StepType;
-  fields?: IFieldDefinition[];      // for 'form'
-  actions?: IActionDefinition[];    // Buttons
-  uiElements?: IUiElements;         // Display config
-  display?: string[];               // Lines of text to display
+  fields?: IFieldDefinition[]; // for 'form'
+  actions?: IActionDefinition[]; // Buttons
+  uiElements?: IUiElements; // Display config
+  display?: string[]; // Lines of text to display
 }
 
 export interface IWorkflowConfig {
   version: string;
+  branchPattern?: Record<string, string>; // e.g. { development: "^feature/.*" }
   steps: IStepDefinition[];
 }
 
 export interface IWorkflowContext {
   currentStep: string;
+  branch?: string; // The branch this context belongs to
   history: Array<{
     timestamp: number;
     action: string;
