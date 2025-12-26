@@ -1,5 +1,5 @@
 import type { ExtensionContext } from 'vscode';
-import { registerVisualizerFeature } from '../features/visualizer';
+import { registerVisualizerFeature } from '../modules/mcp';
 
 export function registerFeatures(context: ExtensionContext): void {
   registerVisualizerFeature(context);

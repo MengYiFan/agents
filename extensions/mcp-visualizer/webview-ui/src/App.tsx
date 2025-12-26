@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { vscode } from '@/lib/vscode';
 import { Header } from '@/components/Header';
-import { McpList } from '@/components/McpList';
+import { McpList } from '@/modules/mcp/McpList';
 import { InitialData } from '@/types';
 import { IWorkflowConfig, IWorkflowContext } from '@/types/workflow';
 import { Loader2 } from 'lucide-react';
 import { ThemeProvider } from '@/components/ThemeProvider';
-import { WorkflowRenderer } from '@/components/WorkflowRenderer';
+import { WorkflowRenderer } from '@/modules/workflow/WorkflowRenderer';
 
 function App() {
   const [data, setData] = useState<InitialData | null>(null);

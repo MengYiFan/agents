@@ -1,5 +1,5 @@
 import { McpDocEntry, InstructionItem, UiText } from '@/types';
-import { Button } from './ui/button';
+import { Button } from '../../components/ui/button';
 import { vscode } from '@/lib/vscode';
 import { BookOpen, Terminal } from 'lucide-react';
 

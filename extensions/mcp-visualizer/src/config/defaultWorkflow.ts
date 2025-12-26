@@ -1,4 +1,4 @@
-import { IWorkflowConfig } from '../features/workflow/types';
+import { IWorkflowConfig } from '../modules/workflow/types';
 
 export const DEFAULT_WORKFLOW_CONFIG: IWorkflowConfig = {
   version: '6.0.0',

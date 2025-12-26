@@ -21,8 +21,8 @@ import {
   IFieldDefinition,
   IActionDefinition,
   IStepDefinition,
-} from '../types/workflow';
-import { usePostMessage } from '../hooks/useVscodeMessage';
+} from '../../types/workflow';
+import { usePostMessage } from '../../hooks/useVscodeMessage';
 import {
   RocketOutlined,
   GithubOutlined,
