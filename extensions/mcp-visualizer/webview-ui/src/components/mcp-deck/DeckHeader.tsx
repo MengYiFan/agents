@@ -5,6 +5,7 @@ interface DeckHeaderProps {
   onToggleTheme: () => void;
   locale?: string;
   onToggleLocale?: () => void;
+  onSettings?: () => void;
 }
 
 export function DeckHeader({
@@ -12,6 +13,7 @@ export function DeckHeader({
   onToggleTheme,
   locale = 'EN',
   onToggleLocale,
+  onSettings,
 }: DeckHeaderProps) {
   return (
     <div className="flex flex-col gap-4 pt-3 pb-1">
@@ -44,7 +46,10 @@ export function DeckHeader({
           </button>
 
           {/* Settings */}
-          <button className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+          <button
+            onClick={onSettings}
+            className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+          >
             <Settings className="w-4 h-4" />
           </button>
         </div>

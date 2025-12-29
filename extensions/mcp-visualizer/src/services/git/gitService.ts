@@ -7,6 +7,8 @@ export interface GitInfo {
   isClean: boolean;
   uncommittedChanges: number;
   hasUncommitted: boolean;
+  userName?: string;
+  userEmail?: string;
 }
 
 /**
@@ -49,11 +51,26 @@ export class GitService {
   public async getGitInfo(): Promise<GitInfo> {
     try {
       const status = await this.git.status();
+      let userName: string | undefined;
+      let userEmail: string | undefined;
+
+      try {
+        const config = await this.git.listConfig();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const all = config.all as any;
+        userName = all['user.name'];
+        userEmail = all['user.email'];
+      } catch (e) {
+        console.warn('Failed to get git config user info', e);
+      }
+
       return {
         currentBranch: status.current || '',
         isClean: status.isClean(),
         uncommittedChanges: status.files.length,
         hasUncommitted: !status.isClean(),
+        userName,
+        userEmail,
       };
     } catch (error) {
       throw this.handleError('Failed to get git info', error);

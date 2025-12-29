@@ -14,6 +14,18 @@ export class MockGitService {
     return !this.dirty;
   }
 
+  // Method missing in mock, adding for compatibility if called
+  async getGitInfo() {
+    return {
+      currentBranch: this.currentBranch,
+      isClean: !this.dirty,
+      uncommittedChanges: 0,
+      hasUncommitted: this.dirty,
+      userName: 'Test User',
+      userEmail: 'test@example.com',
+    };
+  }
+
   async checkout(branch: string): Promise<void> {
     if (!this.branches.includes(branch)) {
       throw new Error(`Branch ${branch} does not exist`);

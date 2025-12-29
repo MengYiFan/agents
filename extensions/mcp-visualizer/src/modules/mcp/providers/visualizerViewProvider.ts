@@ -38,7 +38,8 @@ interface WebviewMessage {
     | 'stashAndCreate'
     | 'resetAndCreate'
     | 'saveWorkflowLink'
-    | 'showError';
+    | 'showError'
+    | 'requestGitInfo';
   docId?: string;
   language?: SupportedLanguage;
   branch?: string;
@@ -234,6 +235,16 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
             vscode.window.showErrorMessage(message.message);
           }
           break;
+        case 'requestGitInfo': {
+          const gitInfo = await this.gitService.getGitInfo();
+          const workflowData = this.workflowService.getWorkflowData(gitInfo.currentBranch);
+          this.postMessage({
+            type: 'gitInfoUpdated',
+            gitInfo,
+            workflow: workflowData,
+          });
+          break;
+        }
         default:
           break;
       }

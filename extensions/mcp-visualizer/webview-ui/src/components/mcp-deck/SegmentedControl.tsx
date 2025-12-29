@@ -9,6 +9,7 @@ export function SegmentedControl({ activeTab, onChange }: SegmentedControlProps)
   return (
     <div className="flex p-1 bg-gray-100 dark:bg-[#1e293b] rounded-xl">
       <button
+        type="button"
         onClick={() => onChange('list')}
         className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
           activeTab === 'list'
@@ -20,6 +21,7 @@ export function SegmentedControl({ activeTab, onChange }: SegmentedControlProps)
         Explore MCPs
       </button>
       <button
+        type="button"
         onClick={() => onChange('workflow')}
         className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
           activeTab === 'workflow'
