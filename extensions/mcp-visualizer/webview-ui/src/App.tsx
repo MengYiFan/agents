@@ -1,12 +1,19 @@
 import { useEffect, useState } from 'react';
 import { vscode } from '@/lib/vscode';
-import { Header } from '@/components/Header';
-import { McpList } from '@/modules/mcp/McpList';
 import { InitialData } from '@/types';
 import { IWorkflowConfig, IWorkflowContext } from '@/types/workflow';
 import { Loader2 } from 'lucide-react';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { WorkflowRenderer } from '@/modules/workflow/WorkflowRenderer';
+import { DeckHeader } from '@/components/mcp-deck/DeckHeader';
+import { ServiceCard } from '@/components/mcp-deck/ServiceCard';
+import { SegmentedControl } from '@/components/mcp-deck/SegmentedControl';
+import { MCPCard } from '@/components/mcp-deck/MCPCard';
+import { QuickActionCard } from '@/components/mcp-deck/QuickActionCard';
+import { activeServices, availableMCPs, quickActions } from './data';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '@/store';
+import { toggleTheme } from '@/store/slices/themeSlice';
 
 function App() {
   const [data, setData] = useState<InitialData | null>(null);
@@ -17,10 +24,8 @@ function App() {
   const [workflowContext, setWorkflowContext] = useState<IWorkflowContext | null>(null);
   const [workflowBranch, setWorkflowBranch] = useState<string>('');
 
-  // Derived states for easier access
-  const docs = data?.docs || [];
-  const instructions = data?.instructions || [];
-  const uiText = data?.uiText;
+  const dispatch = useDispatch();
+  const mode = useSelector((state: RootState) => state.theme.mode);
 
   useEffect(() => {
     const handler = (event: MessageEvent) => {
@@ -28,7 +33,6 @@ function App() {
       switch (message.type) {
         case 'initialData':
           setData(message);
-          // Request workflow init after main init
           vscode.postMessage({ type: 'webview:ready' });
           break;
         case 'workflow:init':
@@ -41,78 +45,114 @@ function App() {
           break;
         case 'gitInfoUpdated':
           setData((prev) => (prev ? { ...prev, gitInfo: message.gitInfo } : null));
-          // Re-trigger workflow fetch on branch change
           vscode.postMessage({ type: 'webview:ready' });
           break;
         case 'themeChanged':
-          const isDark = message.theme.kind?.includes('dark');
-          document.documentElement.classList.toggle('dark', isDark);
-          document.documentElement.classList.toggle('light', !isDark);
-
-          // Dispatch event for ThemeProvider
-          window.dispatchEvent(
-            new CustomEvent('theme-changed', {
-              detail: { theme: isDark ? 'dark' : 'light' },
-            }),
-          );
+          // Existing logic handled by ThemeProvider/Redux but keeping specifically for the class toggle if needed
+          // The Header component in legacy code handled this via Redux effect.
+          // We rely on the useSelector effect below or ThemeProvider.
           break;
       }
     };
 
     window.addEventListener('message', handler);
+    // Request initial data but don't block UI on it for the visual demo
     vscode.postMessage({ type: 'requestInitialData' });
     return () => window.removeEventListener('message', handler);
   }, []);
 
-  if (!data) {
-    return (
-      <div className="flex items-center justify-center h-screen text-muted-foreground">
-        <Loader2 className="animate-spin mr-2" /> Loading Visualizer...
-      </div>
-    );
-  }
+  // Sync theme with HTML class
+  useEffect(() => {
+    if (mode === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('light');
+    }
+  }, [mode]);
+
+  const handleToggleTheme = () => {
+    dispatch(toggleTheme());
+  };
+
+  const handleToggleLocale = () => {
+    // Mock toggle or implementation
+    const current = data?.locale || 'en-US';
+    const nextLocale = current === 'en-US' ? 'zh-CN' : 'en-US';
+    vscode.postMessage({ type: 'switchLocale', language: nextLocale });
+  };
+
+  // We allow rendering without 'data' to show the UI shell as per requirements (Mock Data priority)
 
   return (
     <ThemeProvider>
-      <div className="flex flex-col h-screen bg-background text-foreground transition-colors duration-300">
-        <Header
-          compact={activeTab === 'workflow'}
-          uiText={uiText}
-          authorizations={data?.authorizations}
-          locale={data?.locale}
-          availableLocales={data?.availableLocales}
-        />
+      <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-[#0f172a] text-foreground transition-colors duration-300 font-sans selection:bg-blue-100 selection:text-blue-900">
+        <div className="w-full max-w-full md:max-w-4xl lg:max-w-6xl mx-auto px-4 md:px-6 h-full flex flex-col">
+          {/* Header */}
+          <DeckHeader
+            mode={mode}
+            onToggleTheme={handleToggleTheme}
+            locale={data?.locale === 'zh-cn' ? 'CN' : 'EN'}
+            onToggleLocale={handleToggleLocale}
+          />
 
-        <div className="flex border-b bg-card px-4 pt-2 gap-4">
-          <button
-            onClick={() => setActiveTab('list')}
-            className={`pb-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'list' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-          >
-            Available MCPs
-          </button>
-          <button
-            onClick={() => setActiveTab('workflow')}
-            className={`pb-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'workflow' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-          >
-            R&D Workflows
-          </button>
-        </div>
+          {/* Active Integrations */}
+          <div className="mt-4 mb-6">
+            <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap mr-1">
+                Active Integrations
+              </span>
+              {activeServices.map((service) => (
+                <ServiceCard key={service.id} service={service} />
+              ))}
+            </div>
+          </div>
 
-        <div className="flex-1 overflow-hidden relative">
-          <div
-            className={`absolute inset-0 transition-opacity duration-300 ${activeTab === 'list' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}
-          >
+          {/* Tabs */}
+          <div className="mb-6">
+            <SegmentedControl activeTab={activeTab} onChange={setActiveTab} />
+          </div>
+
+          {/* Content Area */}
+          <div className="flex-1 relative">
+            {/* Explore MCPs Tab */}
             {activeTab === 'list' && (
-              <div className="h-full overflow-auto">
-                <McpList docs={docs} instructions={instructions} uiText={uiText} />
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {/* Available MCPs */}
+                <section>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                      Available MCPs
+                    </h2>
+                    <button className="text-sm font-semibold text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300">
+                      Manage
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {availableMCPs.map((item) => (
+                      <MCPCard key={item.id} item={item} />
+                    ))}
+                  </div>
+                </section>
+
+                {/* Quick Actions */}
+                <section className="pb-8">
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+                    Quick Actions
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {quickActions.map((action) => (
+                      <QuickActionCard key={action.id} action={action} />
+                    ))}
+                  </div>
+                </section>
               </div>
             )}
-          </div>
-          <div
-            className={`absolute inset-0 transition-opacity duration-300 ${activeTab === 'workflow' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}
-          >
+
+            {/* Workflows Tab */}
             {activeTab === 'workflow' && (
-              <div className="h-full workflow-dev-layout">
+              <div className="h-[600px] animate-in fade-in zoom-in-95 duration-300">
                 {workflowConfig && workflowContext ? (
                   <WorkflowRenderer
                     config={workflowConfig}
@@ -120,8 +160,10 @@ function App() {
                     gitBranch={workflowBranch}
                   />
                 ) : (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">
-                    <Loader2 className="animate-spin mr-2" /> Loading Workflow...
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground bg-white dark:bg-[#1e293b] rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
+                    <Loader2 className="animate-spin w-8 h-8 mb-4 text-blue-500" />
+                    <p>Loading Active Workflow...</p>
+                    <p className="text-xs mt-2 opacity-50">Checking workflow context...</p>
                   </div>
                 )}
               </div>
