@@ -10,24 +10,24 @@ export function SegmentedControl({ activeTab, onChange }: SegmentedControlProps)
     <div className="flex p-1 bg-gray-100 dark:bg-[#1e293b] rounded-xl">
       <button
         onClick={() => onChange('list')}
-        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${
+        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
           activeTab === 'list'
             ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
             : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
         }`}
       >
-        <LayoutGrid className="w-4 h-4" />
+        <LayoutGrid className="w-3.5 h-3.5" />
         Explore MCPs
       </button>
       <button
         onClick={() => onChange('workflow')}
-        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${
+        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
           activeTab === 'workflow'
             ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
             : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
         }`}
       >
-        <Workflow className="w-4 h-4" />
+        <Workflow className="w-3.5 h-3.5" />
         Workflows
       </button>
     </div>

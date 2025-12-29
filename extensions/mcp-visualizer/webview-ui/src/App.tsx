@@ -88,7 +88,7 @@ function App() {
   return (
     <ThemeProvider>
       <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-[#0f172a] text-foreground transition-colors duration-300 font-sans selection:bg-blue-100 selection:text-blue-900">
-        <div className="w-full max-w-full md:max-w-4xl lg:max-w-6xl mx-auto px-4 md:px-6 h-full flex flex-col">
+        <div className="w-full max-w-full md:max-w-4xl lg:max-w-6xl mx-auto px-3 md:px-6 h-full flex flex-col">
           {/* Header */}
           <DeckHeader
             mode={mode}
@@ -98,9 +98,9 @@ function App() {
           />
 
           {/* Active Integrations */}
-          <div className="mt-4 mb-6">
-            <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap mr-1">
+          <div className="mt-3 mb-4">
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap mr-1">
                 Active Integrations
               </span>
               {activeServices.map((service) => (
@@ -110,7 +110,7 @@ function App() {
           </div>
 
           {/* Tabs */}
-          <div className="mb-6">
+          <div className="mb-4">
             <SegmentedControl activeTab={activeTab} onChange={setActiveTab} />
           </div>
 
@@ -118,18 +118,18 @@ function App() {
           <div className="flex-1 relative">
             {/* Explore MCPs Tab */}
             {activeTab === 'list' && (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {/* Available MCPs */}
                 <section>
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-base font-bold text-gray-900 dark:text-white">
                       Available MCPs
                     </h2>
-                    <button className="text-sm font-semibold text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300">
+                    <button className="text-xs font-semibold text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300">
                       Manage
                     </button>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {availableMCPs.map((item) => (
                       <MCPCard key={item.id} item={item} />
                     ))}
@@ -137,11 +137,11 @@ function App() {
                 </section>
 
                 {/* Quick Actions */}
-                <section className="pb-8">
-                  <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+                <section className="pb-6">
+                  <h2 className="text-base font-bold text-gray-900 dark:text-white mb-3">
                     Quick Actions
                   </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {quickActions.map((action) => (
                       <QuickActionCard key={action.id} action={action} />
                     ))}

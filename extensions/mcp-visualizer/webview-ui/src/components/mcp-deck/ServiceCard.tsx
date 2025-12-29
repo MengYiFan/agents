@@ -8,16 +8,16 @@ export function ServiceCard({ service }: ServiceCardProps) {
   const Icon = service.icon;
 
   return (
-    <div className="flex items-center justify-between p-3 bg-white dark:bg-[#1e293b] rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 min-w-[140px]">
-      <div className="flex items-center gap-3">
-        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-50 dark:bg-gray-800 overflow-hidden">
+    <div className="flex items-center justify-between p-2.5 bg-white dark:bg-[#1e293b] rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 min-w-[120px]">
+      <div className="flex items-center gap-2">
+        <div className="flex items-center justify-center w-5 h-5 rounded-full bg-gray-50 dark:bg-gray-800 overflow-hidden">
           {typeof Icon === 'string' ? (
-            <img src={Icon} alt={service.name} className="w-4 h-4" />
+            <img src={Icon} alt={service.name} className="w-3.5 h-3.5" />
           ) : (
-            <Icon className="w-4 h-4 text-purple-500" /> /* Fallback/Default color if not specified */
+            <Icon className="w-3.5 h-3.5 text-purple-500" /> /* Fallback/Default color if not specified */
           )}
         </div>
-        <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">
+        <span className="font-semibold text-xs text-gray-900 dark:text-gray-100">
           {service.name}
         </span>
       </div>
