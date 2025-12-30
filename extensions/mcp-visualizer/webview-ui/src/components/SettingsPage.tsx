@@ -63,25 +63,25 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   };
 
   return (
-    <div className="w-full h-full flex flex-col gap-6">
+    <div className="settings-page-container w-full h-full flex flex-col gap-6 px-5">
       {/* Header */}
-      <div className="flex items-center gap-3">
+      <div className="settings-header flex items-center justify-between pt-3 pb-1">
+        <div className="text-xl font-bold text-gray-900 dark:text-white">{t('settings.title')}</div>
         <button
           onClick={onBack}
-          className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+          className="p-1 -mr-1 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
         >
-          <ChevronLeft className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+          <ChevronLeft className="w-6 h-6 text-gray-400 dark:text-gray-400" />
         </button>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">{t('settings.title')}</h1>
       </div>
 
       {/* 2. User Profile Section */}
-      <div className="bg-white dark:bg-[#1e293b] p-4 rounded-2xl shadow-sm flex items-center gap-4">
-        <div className="relative">
+      <div className="settings-profile-section bg-white dark:bg-[#1e293b] p-4 rounded-2xl shadow-sm flex items-center gap-4">
+        <div className="relative shrink-0">
           <img
             src={user.avatarUrl}
             alt="User Avatar"
-            className="w-16 h-16 rounded-full bg-gray-200 object-cover"
+            className="w-[64px] h-[64px] rounded-full bg-gray-200 object-cover"
           />
           {/* Online Status Indicator */}
           <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white dark:border-[#1e293b] rounded-full"></div>
@@ -95,7 +95,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       </div>
 
       {/* Appearance Section */}
-      <div>
+      <div className="settings-appearance-section">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 ml-1">
           {t('settings.appearance.title')}
         </h3>
@@ -151,7 +151,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       </div>
 
       {/* Language Section */}
-      <div className="relative">
+      <div className="settings-language-section relative">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 ml-1">
           {t('settings.language.title')}
         </h3>
@@ -199,7 +199,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       </div>
 
       {/* Plugin Behavior Section */}
-      <div>
+      <div className="settings-behavior-section">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 ml-1">
           {t('settings.pluginBehavior.title')}
         </h3>
@@ -280,7 +280,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       </div>
 
       {/* Docs & Support */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="settings-docs-section grid grid-cols-2 gap-3">
         <button className="flex items-center justify-center gap-2 p-4 bg-white dark:bg-[#1e293b] rounded-2xl border border-transparent hover:border-gray-200 dark:hover:border-slate-700 transition-all text-sm font-medium text-gray-600 dark:text-gray-300">
           <Book className="w-4 h-4" />
           {t('settings.documentation.doc')}
@@ -292,7 +292,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       </div>
 
       {/* Footer Actions */}
-      <div className="mt-auto pt-6 pb-2 text-center space-y-4">
+      <div className="settings-footer mt-auto pt-6 pb-2 text-center space-y-4">
         <button className="text-xs font-semibold text-red-500 hover:text-red-600 transition-colors">
           {t('settings.footer.clearData')}
         </button>

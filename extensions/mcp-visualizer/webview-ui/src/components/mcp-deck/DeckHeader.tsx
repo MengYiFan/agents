@@ -22,10 +22,10 @@ export function DeckHeader({
   const { t } = useTranslation();
 
   return (
-    <div className="flex flex-col gap-4 pt-3 pb-1">
+    <div className="deck-header-container flex flex-col gap-4 pt-3 pb-1">
       {/* Top Bar */}
-      <header className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <header className="deck-header-top-bar flex items-center justify-between">
+        <div className="deck-header-title-group flex items-center gap-2">
           <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-blue-600 shadow-lg shadow-blue-600/20">
             <Puzzle className="w-4 h-4 text-white" />
           </div>
@@ -34,7 +34,7 @@ export function DeckHeader({
           </span>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="deck-header-actions flex items-center gap-1">
           {/* Theme Toggle */}
           <button
             onClick={onToggleTheme}
@@ -63,7 +63,7 @@ export function DeckHeader({
 
       {/* Greeting */}
       <div>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+        <h1 className="deck-header-greeting text-xl font-bold text-gray-900 dark:text-white"><bos>
           {t('header.welcome')}
           <span className="text-blue-500">{userName || t('header.developer')}</span>
         </h1>

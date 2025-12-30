@@ -37,7 +37,7 @@ const MainContent = ({
   const { t } = useTranslation();
 
   return (
-    <div className="w-full max-w-full md:max-w-4xl lg:max-w-6xl mx-auto px-3 md:px-6 h-full flex flex-col">
+    <div className="app-container w-full h-full flex flex-col">
       {view === 'settings' ? (
         <SettingsPage
           onBack={() => setView('home')}
@@ -49,7 +49,7 @@ const MainContent = ({
           onToggleTheme={handleToggleTheme}
         />
       ) : (
-        <>
+        <div className="app-main-content flex-1 flex flex-col px-5">
           {/* Header */}
           <DeckHeader
             mode={mode}
@@ -61,19 +61,17 @@ const MainContent = ({
           />
 
           {/* Active Integrations */}
-          <div className="mt-3 mb-4">
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap mr-1">
-                {t('home.activeIntegrations')}
-              </span>
-              {activeServices.map((service: any) => (
-                <ServiceCard key={service.id} service={service} />
-              ))}
-            </div>
+          <div className="active-integrations-section flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {/* <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap mr-1">
+            {t('home.activeIntegrations')}
+          </span> */}
+            {activeServices.map((service: any) => (
+              <ServiceCard key={service.id} service={service} />
+            ))}
           </div>
 
           {/* Tabs */}
-          <div className="mb-4">
+          <div className="tabs-container mb-4">
             <SegmentedControl activeTab={activeTab} onChange={setActiveTab} />
           </div>
 
@@ -83,7 +81,7 @@ const MainContent = ({
             {activeTab === 'list' && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {/* Available MCPs */}
-                <section>
+                <section className="available-mcps-section">
                   <div className="flex items-center justify-between mb-3">
                     <h2 className="text-base font-bold text-gray-900 dark:text-white">
                       {t('home.availableMcps')}
@@ -100,7 +98,7 @@ const MainContent = ({
                 </section>
 
                 {/* Quick Actions */}
-                <section className="pb-6">
+                <section className="quick-actions-section pb-6">
                   <h2 className="text-base font-bold text-gray-900 dark:text-white mb-3">
                     {t('home.quickActions')}
                   </h2>
@@ -115,7 +113,7 @@ const MainContent = ({
 
             {/* Workflows Tab */}
             {activeTab === 'workflow' && (
-              <div className="h-[600px] animate-in fade-in zoom-in-95 duration-300">
+              <div className="workflows-tab-content h-[600px] animate-in fade-in zoom-in-95 duration-300">
                 {workflowConfig && workflowContext ? (
                   <WorkflowRenderer
                     config={workflowConfig}
@@ -132,7 +130,7 @@ const MainContent = ({
               </div>
             )}
           </div>
-        </>
+        </div>
       )}
     </div>
   );
@@ -222,7 +220,7 @@ function App() {
   return (
     <ThemeProvider>
       <I18nProvider initialLocale={data?.locale}>
-        <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-[#0f172a] text-foreground transition-colors duration-300 font-sans selection:bg-blue-100 selection:text-blue-900">
+        <div className="flex flex-col min-h-screen bg-background text-foreground transition-colors duration-300 font-sans selection:bg-blue-100 selection:text-blue-900">
           <MainContent
             view={view}
             setView={setView}

@@ -50,6 +50,7 @@ export const activeServices: Service[] = [
     status: 'active',
   },
   { id: 'figma', name: 'Figma', icon: Figma, status: 'active' },
+  { id: 'grafana', name: 'Grafana', icon: BarChart3, status: 'active', color: 'text-orange-500' },
 ];
 
 export const availableMCPs: MCP[] = [
