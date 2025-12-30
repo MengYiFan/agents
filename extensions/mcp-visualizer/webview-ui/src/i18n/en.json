@@ -1,0 +1,58 @@
+{
+  "header": {
+    "title": "MCP Deck",
+    "welcome": "Welcome back, ",
+    "developer": "Developer",
+    "searchPlaceholder": "Search..."
+  },
+  "settings": {
+    "title": "Settings",
+    "profile": {
+      "role": "Senior Developer"
+    },
+    "appearance": {
+      "title": "Appearance",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "language": {
+      "title": "Language",
+      "english": "English",
+      "chinese": "中文"
+    },
+    "pluginBehavior": {
+      "title": "Plugin Behavior",
+      "autoSync": {
+        "title": "Auto-sync MCPs",
+        "description": "Manage server connections"
+      },
+      "workflow": {
+        "title": "R&D Workflow",
+        "description": "Context awareness: Standard"
+      },
+      "autoSave": {
+        "title": "Auto-save Logs"
+      }
+    },
+    "documentation": {
+      "doc": "Documentation",
+      "support": "Help & Support"
+    },
+    "footer": {
+      "clearData": "Clear data",
+      "version": "Version"
+    }
+  },
+  "home": {
+    "tabs": {
+      "explore": "Explore MCPs",
+      "workflow": "Workflows"
+    },
+    "activeIntegrations": "Active Integrations",
+    "availableMcps": "Available MCPs",
+    "manage": "Manage",
+    "quickActions": "Quick Actions",
+    "loadingWorkflow": "Loading Active Workflow...",
+    "checkingContext": "Checking workflow context..."
+  }
+}

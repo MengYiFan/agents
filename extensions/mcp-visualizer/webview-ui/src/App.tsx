@@ -15,6 +15,127 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import { toggleTheme } from '@/store/slices/themeSlice';
 import SettingsPage from './components/SettingsPage';
+import { I18nProvider, useTranslation } from './hooks/useTranslation';
+
+// Inner component to use translation hook
+const MainContent = ({
+  view,
+  setView,
+  data,
+  activeTab,
+  setActiveTab,
+  availableMCPs,
+  quickActions,
+  activeServices,
+  handleToggleTheme,
+  handleToggleLocale,
+  mode,
+  workflowConfig,
+  workflowContext,
+  workflowBranch,
+}: any) => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="w-full max-w-full md:max-w-4xl lg:max-w-6xl mx-auto px-3 md:px-6 h-full flex flex-col">
+      {view === 'settings' ? (
+        <SettingsPage
+          onBack={() => setView('home')}
+          userName={data?.gitInfo.userName}
+          userEmail={data?.gitInfo.userEmail}
+          locale={data?.locale}
+          onToggleLocale={(lang) => handleToggleLocale(lang)} // Fix signature match
+          theme={mode}
+          onToggleTheme={handleToggleTheme}
+        />
+      ) : (
+        <>
+          {/* Header */}
+          <DeckHeader
+            mode={mode}
+            onToggleTheme={handleToggleTheme}
+            locale={data?.locale === 'zh-CN' ? 'CN' : 'EN'}
+            onToggleLocale={() => handleToggleLocale()}
+            onSettings={() => setView('settings')}
+          />
+
+          {/* Active Integrations */}
+          <div className="mt-3 mb-4">
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap mr-1">
+                {t('home.activeIntegrations')}
+              </span>
+              {activeServices.map((service: any) => (
+                <ServiceCard key={service.id} service={service} />
+              ))}
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="mb-4">
+            <SegmentedControl activeTab={activeTab} onChange={setActiveTab} />
+          </div>
+
+          {/* Content Area */}
+          <div className="flex-1 relative">
+            {/* Explore MCPs Tab */}
+            {activeTab === 'list' && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {/* Available MCPs */}
+                <section>
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-base font-bold text-gray-900 dark:text-white">
+                      {t('home.availableMcps')}
+                    </h2>
+                    <button className="text-xs font-semibold text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300">
+                      {t('home.manage')}
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {availableMCPs.map((item: any) => (
+                      <MCPCard key={item.id} item={item} />
+                    ))}
+                  </div>
+                </section>
+
+                {/* Quick Actions */}
+                <section className="pb-6">
+                  <h2 className="text-base font-bold text-gray-900 dark:text-white mb-3">
+                    {t('home.quickActions')}
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {quickActions.map((action: any) => (
+                      <QuickActionCard key={action.id} action={action} />
+                    ))}
+                  </div>
+                </section>
+              </div>
+            )}
+
+            {/* Workflows Tab */}
+            {activeTab === 'workflow' && (
+              <div className="h-[600px] animate-in fade-in zoom-in-95 duration-300">
+                {workflowConfig && workflowContext ? (
+                  <WorkflowRenderer
+                    config={workflowConfig}
+                    context={workflowContext}
+                    gitBranch={workflowBranch}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground bg-white dark:bg-[#1e293b] rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
+                    <Loader2 className="animate-spin w-8 h-8 mb-4 text-blue-500" />
+                    <p>{t('home.loadingWorkflow')}</p>
+                    <p className="text-xs mt-2 opacity-50">{t('home.checkingContext')}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
 
 function App() {
   const [data, setData] = useState<InitialData | null>(null);
@@ -85,10 +206,13 @@ function App() {
     dispatch(toggleTheme());
   };
 
-  const handleToggleLocale = () => {
+  const handleToggleLocale = (lang?: string) => {
     // Mock toggle or implementation
-    const current = data?.locale || 'en-US';
-    const nextLocale = current === 'en-US' ? 'zh-CN' : 'en-US';
+    let nextLocale = lang;
+    if (!nextLocale) {
+      const current = data?.locale || 'en-US';
+      nextLocale = current === 'en-US' ? 'zh-CN' : 'en-US';
+    }
     vscode.postMessage({ type: 'switchLocale', language: nextLocale });
   };
 
@@ -96,107 +220,26 @@ function App() {
 
   return (
     <ThemeProvider>
-      <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-[#0f172a] text-foreground transition-colors duration-300 font-sans selection:bg-blue-100 selection:text-blue-900">
-        <div className="w-full max-w-full md:max-w-4xl lg:max-w-6xl mx-auto px-3 md:px-6 h-full flex flex-col">
-          {view === 'settings' ? (
-            <SettingsPage
-              onBack={() => setView('home')}
-              userName={data?.gitInfo.userName}
-              userEmail={data?.gitInfo.userEmail}
-              locale={data?.locale}
-              onToggleLocale={(lang) =>
-                vscode.postMessage({ type: 'switchLocale', language: lang })
-              }
-              theme={mode}
-              onToggleTheme={handleToggleTheme}
-            />
-          ) : (
-            <>
-              {/* Header */}
-              <DeckHeader
-                mode={mode}
-                onToggleTheme={handleToggleTheme}
-                locale={data?.locale === 'zh-CN' ? 'CN' : 'EN'}
-                onToggleLocale={handleToggleLocale}
-                onSettings={() => setView('settings')}
-              />
-
-              {/* Active Integrations */}
-              <div className="mt-3 mb-4">
-                <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap mr-1">
-                    Active Integrations
-                  </span>
-                  {activeServices.map((service) => (
-                    <ServiceCard key={service.id} service={service} />
-                  ))}
-                </div>
-              </div>
-
-              {/* Tabs */}
-              <div className="mb-4">
-                <SegmentedControl activeTab={activeTab} onChange={setActiveTab} />
-              </div>
-
-              {/* Content Area */}
-              <div className="flex-1 relative">
-                {/* Explore MCPs Tab */}
-                {activeTab === 'list' && (
-                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    {/* Available MCPs */}
-                    <section>
-                      <div className="flex items-center justify-between mb-3">
-                        <h2 className="text-base font-bold text-gray-900 dark:text-white">
-                          Available MCPs
-                        </h2>
-                        <button className="text-xs font-semibold text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300">
-                          Manage
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {availableMCPs.map((item) => (
-                          <MCPCard key={item.id} item={item} />
-                        ))}
-                      </div>
-                    </section>
-
-                    {/* Quick Actions */}
-                    <section className="pb-6">
-                      <h2 className="text-base font-bold text-gray-900 dark:text-white mb-3">
-                        Quick Actions
-                      </h2>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {quickActions.map((action) => (
-                          <QuickActionCard key={action.id} action={action} />
-                        ))}
-                      </div>
-                    </section>
-                  </div>
-                )}
-
-                {/* Workflows Tab */}
-                {activeTab === 'workflow' && (
-                  <div className="h-[600px] animate-in fade-in zoom-in-95 duration-300">
-                    {workflowConfig && workflowContext ? (
-                      <WorkflowRenderer
-                        config={workflowConfig}
-                        context={workflowContext}
-                        gitBranch={workflowBranch}
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center h-full text-muted-foreground bg-white dark:bg-[#1e293b] rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
-                        <Loader2 className="animate-spin w-8 h-8 mb-4 text-blue-500" />
-                        <p>Loading Active Workflow...</p>
-                        <p className="text-xs mt-2 opacity-50">Checking workflow context...</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
+      <I18nProvider initialLocale={data?.locale}>
+        <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-[#0f172a] text-foreground transition-colors duration-300 font-sans selection:bg-blue-100 selection:text-blue-900">
+          <MainContent
+            view={view}
+            setView={setView}
+            data={data}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            availableMCPs={availableMCPs}
+            quickActions={quickActions}
+            activeServices={activeServices}
+            handleToggleTheme={handleToggleTheme}
+            handleToggleLocale={handleToggleLocale}
+            mode={mode}
+            workflowConfig={workflowConfig}
+            workflowContext={workflowContext}
+            workflowBranch={workflowBranch}
+          />
         </div>
-      </div>
+      </I18nProvider>
     </ThemeProvider>
   );
 }

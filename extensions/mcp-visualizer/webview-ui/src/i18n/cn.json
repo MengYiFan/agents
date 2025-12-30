@@ -1,0 +1,58 @@
+{
+  "header": {
+    "title": "MCP 仪表板",
+    "welcome": "欢迎回来, ",
+    "developer": "开发者",
+    "searchPlaceholder": "搜索..."
+  },
+  "settings": {
+    "title": "设置",
+    "profile": {
+      "role": "高级开发者"
+    },
+    "appearance": {
+      "title": "外观",
+      "light": "浅色",
+      "dark": "深色"
+    },
+    "language": {
+      "title": "语言",
+      "english": "English",
+      "chinese": "中文"
+    },
+    "pluginBehavior": {
+      "title": "插件行为",
+      "autoSync": {
+        "title": "自动同步 MCP",
+        "description": "管理服务器连接"
+      },
+      "workflow": {
+        "title": "研发工作流",
+        "description": "上下文感知：标准"
+      },
+      "autoSave": {
+        "title": "自动保存日志"
+      }
+    },
+    "documentation": {
+      "doc": "文档",
+      "support": "帮助与支持"
+    },
+    "footer": {
+      "clearData": "清除数据",
+      "version": "版本"
+    }
+  },
+  "home": {
+    "tabs": {
+      "explore": "探索 MCP",
+      "workflow": "工作流"
+    },
+    "activeIntegrations": "活跃集成",
+    "availableMcps": "可用 MCP",
+    "manage": "管理",
+    "quickActions": "快捷操作",
+    "loadingWorkflow": "加载工作流中...",
+    "checkingContext": "检查工作流上下文..."
+  }
+}

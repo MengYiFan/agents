@@ -1,5 +1,7 @@
 import { Moon, Sun, Settings, Puzzle } from 'lucide-react';
 
+import { useTranslation } from '../../hooks/useTranslation';
+
 interface DeckHeaderProps {
   mode: 'light' | 'dark';
   onToggleTheme: () => void;
@@ -15,6 +17,8 @@ export function DeckHeader({
   onToggleLocale,
   onSettings,
 }: DeckHeaderProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex flex-col gap-4 pt-3 pb-1">
       {/* Top Bar */}
@@ -24,7 +28,7 @@ export function DeckHeader({
             <Puzzle className="w-4 h-4 text-white" />
           </div>
           <span className="font-bold text-base text-gray-900 dark:text-white tracking-tight">
-            MCP Deck
+            {t('header.title')}
           </span>
         </div>
 
@@ -58,7 +62,8 @@ export function DeckHeader({
       {/* Greeting */}
       <div>
         <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-          Welcome back, <span className="text-blue-500">Developer</span>
+          {t('header.welcome')}
+          <span className="text-blue-500">{t('header.developer')}</span>
         </h1>
       </div>
     </div>

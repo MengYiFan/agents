@@ -1,4 +1,5 @@
 import { LayoutGrid, Workflow } from 'lucide-react';
+import { useTranslation } from '../../hooks/useTranslation';
 
 interface SegmentedControlProps {
   activeTab: 'list' | 'workflow';
@@ -6,6 +7,8 @@ interface SegmentedControlProps {
 }
 
 export function SegmentedControl({ activeTab, onChange }: SegmentedControlProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex p-1 bg-gray-100 dark:bg-[#1e293b] rounded-xl">
       <button
@@ -18,7 +21,7 @@ export function SegmentedControl({ activeTab, onChange }: SegmentedControlProps)
         }`}
       >
         <LayoutGrid className="w-3.5 h-3.5" />
-        Explore MCPs
+        {t('home.tabs.explore')}
       </button>
       <button
         type="button"
@@ -30,7 +33,7 @@ export function SegmentedControl({ activeTab, onChange }: SegmentedControlProps)
         }`}
       >
         <Workflow className="w-3.5 h-3.5" />
-        Workflows
+        {t('home.tabs.workflow')}
       </button>
     </div>
   );
