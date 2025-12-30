@@ -8,6 +8,7 @@ interface DeckHeaderProps {
   locale?: string;
   onToggleLocale?: () => void;
   onSettings?: () => void;
+  userName?: string;
 }
 
 export function DeckHeader({
@@ -16,6 +17,7 @@ export function DeckHeader({
   locale = 'EN',
   onToggleLocale,
   onSettings,
+  userName,
 }: DeckHeaderProps) {
   const { t } = useTranslation();
 
@@ -63,7 +65,7 @@ export function DeckHeader({
       <div>
         <h1 className="text-xl font-bold text-gray-900 dark:text-white">
           {t('header.welcome')}
-          <span className="text-blue-500">{t('header.developer')}</span>
+          <span className="text-blue-500">{userName || t('header.developer')}</span>
         </h1>
       </div>
     </div>

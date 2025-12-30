@@ -57,6 +57,7 @@ const MainContent = ({
             locale={data?.locale === 'zh-CN' ? 'CN' : 'EN'}
             onToggleLocale={() => handleToggleLocale()}
             onSettings={() => setView('settings')}
+            userName={data?.gitInfo.userName}
           />
 
           {/* Active Integrations */}

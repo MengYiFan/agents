@@ -78,7 +78,8 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
   constructor(private readonly context: vscode.ExtensionContext) {
     this.locale = resolveSupportedLanguage(vscode.env.language);
     this.uiText = getUiText(this.locale);
-    this.gitService = new GitService();
+    const workspaceRoot = getWorkspaceRoot();
+    this.gitService = new GitService(workspaceRoot);
     this.workflowService = new WorkflowService(context);
 
     this.context.subscriptions.push(
@@ -90,13 +91,17 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
     // Listen for branch changes
     this.context.subscriptions.push(
       this.gitService.onDidBranchChange(async () => {
-        const gitInfo = await this.gitService.getGitInfo();
-        const workflowData = this.workflowService.getWorkflowData(gitInfo.currentBranch);
-        this.postMessage({
-          type: 'gitInfoUpdated',
-          gitInfo,
-          workflow: workflowData,
-        });
+        try {
+          const gitInfo = await this.gitService.getGitInfo();
+          const workflowData = this.workflowService.getWorkflowData(gitInfo.currentBranch);
+          this.postMessage({
+            type: 'gitInfoUpdated',
+            gitInfo,
+            workflow: workflowData,
+          });
+        } catch (error) {
+          console.warn('Failed to update git info on branch change:', error);
+        }
       }),
     );
   }
@@ -236,13 +241,28 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
           }
           break;
         case 'requestGitInfo': {
-          const gitInfo = await this.gitService.getGitInfo();
-          const workflowData = this.workflowService.getWorkflowData(gitInfo.currentBranch);
-          this.postMessage({
-            type: 'gitInfoUpdated',
-            gitInfo,
-            workflow: workflowData,
-          });
+          try {
+            const gitInfo = await this.gitService.getGitInfo();
+            const workflowData = this.workflowService.getWorkflowData(gitInfo.currentBranch);
+            this.postMessage({
+              type: 'gitInfoUpdated',
+              gitInfo,
+              workflow: workflowData,
+            });
+          } catch (error) {
+            console.warn('Failed to get git info:', error);
+            // Send fallback info
+            this.postMessage({
+              type: 'gitInfoUpdated',
+              gitInfo: {
+                currentBranch: '',
+                isClean: true,
+                uncommittedChanges: 0,
+                hasUncommitted: false,
+              },
+              workflow: null,
+            });
+          }
           break;
         }
         default:
@@ -293,13 +313,12 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
     }
 
     // Get git info
-    const gitService = new GitService();
     let gitInfo: GitInfo;
     let releaseBranches: string[] = [];
 
     try {
-      gitInfo = await gitService.getGitInfo();
-      releaseBranches = await gitService.listReleaseBranches();
+      gitInfo = await this.gitService.getGitInfo();
+      releaseBranches = await this.gitService.listReleaseBranches();
     } catch (error) {
       console.warn('Failed to load git info:', error);
       gitInfo = {
@@ -356,7 +375,14 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
       return;
     }
 
-    const gitInfo = await this.gitService.getGitInfo();
+    let gitInfo;
+    try {
+      gitInfo = await this.gitService.getGitInfo();
+    } catch (error) {
+      vscode.window.showErrorMessage('无法获取 Git 信息，请确保当前工作区是一个有效的 Git 仓库。');
+      return;
+    }
+
     if (gitInfo.hasUncommitted) {
       this.postMessage({ type: 'branchBlocked', reason: 'uncommitted' });
       return;
@@ -369,8 +395,13 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
         this.pendingBranchPayload.prdBrief,
       );
       const workflow = this.workflowService.getWorkflowData(branchName);
-      const gitInfo = await this.gitService.getGitInfo();
-      this.postMessage({ type: 'branchCreated', branch: branchName, workflow, gitInfo });
+      const updatedGitInfo = await this.gitService.getGitInfo();
+      this.postMessage({
+        type: 'branchCreated',
+        branch: branchName,
+        workflow,
+        gitInfo: updatedGitInfo,
+      });
       this.pendingBranchPayload = undefined;
     } catch (error) {
       const err = error as { message?: string };
