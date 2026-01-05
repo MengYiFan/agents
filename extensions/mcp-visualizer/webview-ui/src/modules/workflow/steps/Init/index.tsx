@@ -1,29 +1,39 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Card, Form, Alert, Space, Typography, FormInstance } from 'antd';
-import { IStepDefinition, IFieldDefinition } from '../../../types/workflow';
 import { PlayCircleOutlined } from '@ant-design/icons';
+import { IActionDefinition, IStepDefinition } from '../../../../types/workflow';
+import { StepField } from '../../common/StepField';
+import { StepActions } from '../../common/StepActions';
 
 const { Title, Paragraph } = Typography;
 
-interface WorkflowInitViewProps {
-  gitBranch: string;
-  showInitForm: boolean;
-  setShowInitForm: (show: boolean) => void;
-  form: FormInstance;
+interface InitStepProps {
   currentStep: IStepDefinition;
-  renderField: (field: IFieldDefinition) => React.ReactNode;
-  renderActionButtons: (isInline?: boolean) => React.ReactNode;
+  gitBranch: string;
+  form: FormInstance;
+  loadingAction: string | null;
+  onAction: (action: IActionDefinition) => void;
+  // Context to determine if we are revisiting this step or starting fresh
+  hasContextData?: boolean;
 }
 
-export const WorkflowInitView: React.FC<WorkflowInitViewProps> = ({
-  gitBranch,
-  showInitForm,
-  setShowInitForm,
-  form,
+export const InitStep: React.FC<InitStepProps> = ({
   currentStep,
-  renderField,
-  renderActionButtons,
+  gitBranch,
+  form,
+  loadingAction,
+  onAction,
+  hasContextData,
 }) => {
+  const [showInitForm, setShowInitForm] = useState(false);
+
+  // If we already have context data (e.g. revisiting init step), show form immediately
+  useEffect(() => {
+    if (hasContextData) {
+      setShowInitForm(true);
+    }
+  }, [hasContextData]);
+
   // View A: Landing View
   if (!showInitForm) {
     return (
@@ -59,7 +69,7 @@ export const WorkflowInitView: React.FC<WorkflowInitViewProps> = ({
     );
   }
 
-  // Step 1: Basic Info Form
+  // View B: Form View
   return (
     <div className="workflow-init-layout">
       <div className="workflow-init-content">
@@ -82,12 +92,20 @@ export const WorkflowInitView: React.FC<WorkflowInitViewProps> = ({
             />
 
             <Form form={form} layout="vertical">
-              {currentStep.fields?.map(renderField)}
+              {currentStep.fields?.map((field) => (
+                <StepField key={field.key} field={field} />
+              ))}
             </Form>
           </Card>
         </div>
       </div>
-      <div className="workflow-action-bar">{renderActionButtons()}</div>
+      <div className="workflow-action-bar">
+        <StepActions
+          actions={currentStep.actions}
+          loadingAction={loadingAction}
+          onAction={onAction}
+        />
+      </div>
     </div>
   );
 };

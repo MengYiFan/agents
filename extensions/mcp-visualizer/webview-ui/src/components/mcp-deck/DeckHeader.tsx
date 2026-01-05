@@ -63,7 +63,7 @@ export function DeckHeader({
 
       {/* Greeting */}
       <div>
-        <h1 className="deck-header-greeting text-xl font-bold text-gray-900 dark:text-white"><bos>
+        <h1 className="deck-header-greeting text-xl font-bold text-gray-900 dark:text-white">
           {t('header.welcome')}
           <span className="text-blue-500">{userName || t('header.developer')}</span>
         </h1>

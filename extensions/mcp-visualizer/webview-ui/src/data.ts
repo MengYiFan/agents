@@ -1,6 +1,5 @@
 import {
   LucideIcon,
-  LayoutGrid,
   Figma,
   BarChart3,
   MessageSquare,

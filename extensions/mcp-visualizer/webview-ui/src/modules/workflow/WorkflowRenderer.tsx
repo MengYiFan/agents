@@ -1,23 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import { Button, Form, Input, Select, InputNumber, Space } from 'antd';
-import {
-  RocketOutlined,
-  GithubOutlined,
-  CheckCircleOutlined,
-  BranchesOutlined,
-} from '@ant-design/icons';
-import {
-  IWorkflowConfig,
-  IWorkflowContext,
-  IFieldDefinition,
-  IActionDefinition,
-  IStepDefinition,
-} from '../../types/workflow';
+import React, { useEffect } from 'react';
+import { Form, Result, Button } from 'antd';
+import { IWorkflowConfig, IWorkflowContext, IStepDefinition } from '../../types/workflow';
 import { useWorkflowActions } from './hooks/useWorkflowActions';
-import { WorkflowInitView } from './components/WorkflowInitView';
-import { WorkflowDevView } from './components/WorkflowDevView';
-import { WorkflowStepContent } from './components/WorkflowStepContent';
 import './WorkflowRenderer.css';
+
+// Steps
+import { InitStep } from './steps/Init';
+import { DevelopmentStep } from './steps/Development';
+import { TestingStep } from './steps/Testing';
+import { AcceptanceStep } from './steps/Acceptance';
+import { ReleaseStep } from './steps/Release';
 
 interface WorkflowRendererProps {
   config: IWorkflowConfig;
@@ -34,9 +26,6 @@ export const WorkflowRenderer: React.FC<WorkflowRendererProps> = ({
 }) => {
   const [form] = Form.useForm();
 
-  // State to control Init View (View A) vs Basic Info Form
-  const [showInitForm, setShowInitForm] = useState(false);
-
   // Sync form data from context
   useEffect(() => {
     if (context.data) {
@@ -50,152 +39,78 @@ export const WorkflowRenderer: React.FC<WorkflowRendererProps> = ({
 
   const { handleAction, loadingAction } = useWorkflowActions(form, currentStep);
 
-  // Determine View Mode
-  // If branch starts with 'feature/', we are in Dev View.
-  const isDevBranch = gitBranch && gitBranch.startsWith('feature/');
-  // If not dev branch, we defaults to Init View Logic
-
-  const getActionProps = (action: IActionDefinition) => {
-    let btnType: any = 'default';
-    let danger = false;
-
-    // Map config styles to AntD Button props
-    if (action.style === 'primary') btnType = 'primary';
-    else if (action.style === 'danger') {
-      btnType = 'primary';
-      danger = true;
-    } else if (action.style === 'ghost') btnType = 'text';
-    else if (action.style === 'link') btnType = 'link';
-
-    // Icons
-    let icon = undefined;
-    if (action.type === 'GitCommit') icon = <CheckCircleOutlined />;
-    else if (action.type === 'Transition') icon = <RocketOutlined />;
-    else if (action.type === 'CreateBranch') icon = <BranchesOutlined />;
-    else if (action.type === 'MergeAndPush') icon = <GithubOutlined />;
-
-    return {
-      type: btnType,
-      danger,
-      icon,
-      onClick: () => handleAction(action),
-      loading: loadingAction === action.type,
-      disabled: loadingAction !== null,
-    };
-  };
-
-  const renderActionButtons = (isInline = false) => {
-    if (!currentStep.actions?.length) return null;
-
-    if (isInline) {
+  // Render Logic based on Step ID
+  switch (currentStep.id) {
+    case 'init':
       return (
-        <Space>
-          {currentStep.actions.map((action, idx) => {
-            const props = getActionProps(action);
-            return (
-              <Button key={idx} {...props}>
-                {action.label}
-              </Button>
-            );
-          })}
-        </Space>
-      );
-    }
-
-    return (
-      <Space>
-        {currentStep.actions.map((action, idx) => {
-          const props = getActionProps(action);
-          return (
-            <Button key={idx} {...props} block>
-              {action.label}
-            </Button>
-          );
-        })}
-      </Space>
-    );
-  };
-
-  const renderField = (field: IFieldDefinition) => {
-    let inputNode;
-    switch (field.type) {
-      case 'select':
-        inputNode = (
-          <Select
-            options={field.options?.map((o) => ({ label: o, value: o }))}
-            placeholder={field.placeholder}
-          />
-        );
-        break;
-      case 'number':
-        inputNode = <InputNumber style={{ width: '100%' }} placeholder={field.placeholder} />;
-        break;
-      case 'text':
-      case 'string':
-        inputNode = <Input placeholder={field.placeholder} />;
-        break;
-      case 'url':
-        inputNode = <Input prefix="🔗" placeholder={field.placeholder || 'https://...'} />;
-        break;
-      default:
-        inputNode = <Input placeholder={field.placeholder} />;
-    }
-
-    const rules: any[] = [];
-    if (field.required) {
-      rules.push({ required: true, message: `${field.label} is required` });
-    }
-    if (field.pattern) {
-      rules.push({
-        pattern: new RegExp(field.pattern),
-        message: field.description || 'Format invalid',
-      });
-    }
-
-    return (
-      <Form.Item
-        key={field.key}
-        name={field.key}
-        label={field.label}
-        rules={rules}
-        tooltip={field.description}
-        initialValue={field.defaultValue || field.default}
-      >
-        {inputNode}
-      </Form.Item>
-    );
-  };
-
-  if (!isDevBranch) {
-    return (
-      <WorkflowInitView
-        gitBranch={gitBranch}
-        showInitForm={showInitForm}
-        setShowInitForm={setShowInitForm}
-        form={form}
-        currentStep={currentStep}
-        renderField={renderField}
-        renderActionButtons={renderActionButtons}
-      />
-    );
-  }
-
-  return (
-    <WorkflowDevView
-      config={config}
-      context={context}
-      gitBranch={gitBranch}
-      currentStep={currentStep}
-      currentStepIndex={currentStepIndex}
-      renderStepContent={() => (
-        <WorkflowStepContent
+        <InitStep
           currentStep={currentStep}
+          gitBranch={gitBranch}
           form={form}
-          renderField={renderField}
+          loadingAction={loadingAction}
+          onAction={handleAction}
+          hasContextData={Object.keys(context.data || {}).length > 0}
+        />
+      );
+
+    case 'development':
+      return (
+        <DevelopmentStep
+          config={config}
+          context={context}
+          gitBranch={gitBranch}
+          currentStep={currentStep}
+          loadingAction={loadingAction}
+          onAction={handleAction}
+        />
+      );
+
+    case 'testing':
+      return (
+        <TestingStep
+          config={config}
+          context={context}
+          gitBranch={gitBranch}
+          currentStep={currentStep}
+          loadingAction={loadingAction}
+          onAction={handleAction}
+        />
+      );
+
+    case 'acceptance':
+      return (
+        <AcceptanceStep
+          config={config}
+          context={context}
+          gitBranch={gitBranch}
+          currentStep={currentStep}
+          loadingAction={loadingAction}
+          onAction={handleAction}
+        />
+      );
+
+    case 'release':
+      return (
+        <ReleaseStep
+          config={config}
+          context={context}
+          gitBranch={gitBranch}
+          currentStep={currentStep}
+          loadingAction={loadingAction}
+          onAction={handleAction}
+          form={form}
           releaseBranches={releaseBranches}
         />
-      )}
-      renderActionButtons={renderActionButtons}
-    />
-  );
+      );
+
+    default:
+      return (
+        <Result
+          status="500"
+          title="Unknown Step"
+          subTitle={`Step ID "${currentStep.id}" is not recognized.`}
+          extra={<Button type="primary">Reload</Button>}
+        />
+      );
+  }
 };
