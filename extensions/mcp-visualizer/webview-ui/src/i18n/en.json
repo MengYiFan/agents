@@ -54,5 +54,12 @@
     "quickActions": "Quick Actions",
     "loadingWorkflow": "Loading Active Workflow...",
     "checkingContext": "Checking workflow context..."
+  },
+  "steps": {
+    "setup": { "name": "Setup", "title": "Setup Phase", "description": "Init" },
+    "development": { "name": "Development", "title": "Development", "description": "Code" },
+    "testing": { "name": "Testing", "title": "Testing", "description": "Verify" },
+    "uat": { "name": "UAT", "title": "UAT", "description": "Review" },
+    "release": { "name": "Release", "title": "Release", "description": "Deploy" }
   }
 }

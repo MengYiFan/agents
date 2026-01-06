@@ -119,6 +119,13 @@ const MainContent = ({
                     config={workflowConfig}
                     context={workflowContext}
                     gitBranch={workflowBranch}
+                    onBack={() => setActiveTab('list')}
+                    // Header Props
+                    mode={mode}
+                    onToggleTheme={handleToggleTheme}
+                    locale={data?.locale === 'zh-CN' ? 'CN' : 'EN'}
+                    onToggleLocale={() => handleToggleLocale()}
+                    onSettings={() => setView('settings')}
                   />
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground bg-white dark:bg-[#1e293b] rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">

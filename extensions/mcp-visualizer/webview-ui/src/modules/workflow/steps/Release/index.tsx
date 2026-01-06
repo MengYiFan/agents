@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Form, Alert, FormInstance, Select } from 'antd';
+import { Card, Form, Alert, FormInstance, Select, Button, Space } from 'antd';
 import {
   IWorkflowConfig,
   IWorkflowContext,
@@ -7,7 +7,6 @@ import {
   IActionDefinition,
 } from '../../../../types/workflow';
 import { StepLayout } from '../../common/StepLayout';
-import { StepActions } from '../../common/StepActions';
 
 interface ReleaseStepProps {
   config: IWorkflowConfig;
@@ -18,6 +17,12 @@ interface ReleaseStepProps {
   loadingAction: string | null;
   onAction: (action: IActionDefinition) => void;
   releaseBranches?: string[];
+  // New props
+  isReadOnly?: boolean;
+  onGoToActive?: () => void;
+  onBack?: () => void;
+  onStepClick?: (stepId: string) => void;
+  activeStepId?: string;
 }
 
 export const ReleaseStep: React.FC<ReleaseStepProps> = ({
@@ -28,6 +33,9 @@ export const ReleaseStep: React.FC<ReleaseStepProps> = ({
   form,
   loadingAction,
   onAction,
+  onBack,
+  onStepClick,
+  activeStepId,
   releaseBranches = [],
 }) => {
   return (
@@ -36,14 +44,23 @@ export const ReleaseStep: React.FC<ReleaseStepProps> = ({
       context={context}
       gitBranch={gitBranch}
       currentStep={currentStep}
-      showSteps={true}
-      showStatusCard={true}
+      title="Release"
+      onBack={onBack}
+      onStepClick={onStepClick}
+      activeStepId={activeStepId}
       footer={
-        <StepActions
-          actions={currentStep.actions}
-          loadingAction={loadingAction}
-          onAction={onAction}
-        />
+        <Space>
+          {currentStep.actions?.map((action) => (
+            <Button
+              key={action.type}
+              type="primary"
+              loading={loadingAction === action.type}
+              onClick={() => onAction(action)}
+            >
+              {action.label}
+            </Button>
+          ))}
+        </Space>
       }
     >
       <Card bordered={false} title="Release Configuration">

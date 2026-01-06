@@ -1,14 +1,12 @@
-import React, { useEffect } from 'react';
-import { Form, Result, Button } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Form } from 'antd';
 import { IWorkflowConfig, IWorkflowContext, IStepDefinition } from '../../types/workflow';
 import { useWorkflowActions } from './hooks/useWorkflowActions';
 import './WorkflowRenderer.css';
 
 // Steps
-import { InitStep } from './steps/Init';
-import { DevelopmentStep } from './steps/Development';
-import { TestingStep } from './steps/Testing';
-import { AcceptanceStep } from './steps/Acceptance';
+import { SetupStep } from './steps/Setup';
+import { GenericProcessStep } from './steps/GenericProcess';
 import { ReleaseStep } from './steps/Release';
 
 interface WorkflowRendererProps {
@@ -16,6 +14,13 @@ interface WorkflowRendererProps {
   context: IWorkflowContext;
   gitBranch: string;
   releaseBranches?: string[];
+  onBack?: () => void;
+  // Header Actions
+  mode?: 'light' | 'dark';
+  onToggleTheme?: () => void;
+  locale?: string;
+  onToggleLocale?: () => void;
+  onSettings?: () => void;
 }
 
 export const WorkflowRenderer: React.FC<WorkflowRendererProps> = ({
@@ -23,8 +28,24 @@ export const WorkflowRenderer: React.FC<WorkflowRendererProps> = ({
   context,
   gitBranch,
   releaseBranches = [],
+  onBack,
+  mode,
+  onToggleTheme,
+  locale,
+  onToggleLocale,
+  onSettings,
 }) => {
   const [form] = Form.useForm();
+
+  // Track which step the user is currently viewing (READ-ONLY if != context.currentStep)
+  const [viewingStepId, setViewingStepId] = useState<string>(context.currentStep);
+
+  // Update viewing step when context changes (e.g. step transition)
+  useEffect(() => {
+    // If context.currentStep is 'init' (or 'setup' depending on config), verify mapping
+    // We treat 'init' and 'setup' as equivalent for the Setup phase
+    setViewingStepId(context.currentStep);
+  }, [context.currentStep]);
 
   // Sync form data from context
   useEffect(() => {
@@ -34,83 +55,72 @@ export const WorkflowRenderer: React.FC<WorkflowRendererProps> = ({
   }, [context.data, form]);
 
   const currentStepId = context.currentStep;
-  const currentStepIndex = config.steps.findIndex((s) => s.id === currentStepId);
-  const currentStep: IStepDefinition = config.steps[currentStepIndex] || config.steps[0];
 
-  const { handleAction, loadingAction } = useWorkflowActions(form, currentStep);
+  // The step object to render corresponds to viewingStepId, NOT context.currentStep (unless they match)
+  const viewingStepIndex = config.steps.findIndex((s) => s.id === viewingStepId);
+  const viewingStep: IStepDefinition = config.steps[viewingStepIndex] || config.steps[0];
 
-  // Render Logic based on Step ID
-  switch (currentStep.id) {
-    case 'init':
+  // Real active step for logic (where actions are valid)
+  const activeStepIndex = config.steps.findIndex((s) => s.id === currentStepId);
+
+  const { handleAction, loadingAction } = useWorkflowActions(form, viewingStep);
+
+  const isReadOnly = viewingStepId !== currentStepId;
+
+  const handleStepClick = (stepId: string) => {
+    // Navigate to any previous step or the current step
+    const clickedIndex = config.steps.findIndex((s) => s.id === stepId);
+    if (clickedIndex <= activeStepIndex) {
+      setViewingStepId(stepId);
+    }
+  };
+
+  // Common props for all steps
+  const commonProps = {
+    config,
+    context,
+    gitBranch,
+    currentStep: viewingStep, // Render the VIEWING step
+    loadingAction,
+    onAction: handleAction,
+    // Navigation props
+    isReadOnly,
+    onBack,
+    onStepClick: handleStepClick,
+    activeStepId: currentStepId,
+    onGoToActive: () => setViewingStepId(currentStepId),
+    // Header Actions
+    mode,
+    onToggleTheme,
+    locale,
+    onToggleLocale,
+    onSettings,
+  };
+
+  // Render Logic based on Step TYPE
+  switch (viewingStep.type) {
+    case 'form':
       return (
-        <InitStep
-          currentStep={currentStep}
-          gitBranch={gitBranch}
+        <SetupStep
+          {...commonProps}
           form={form}
-          loadingAction={loadingAction}
-          onAction={handleAction}
           hasContextData={Object.keys(context.data || {}).length > 0}
+          onBack={onBack}
         />
       );
 
-    case 'development':
-      return (
-        <DevelopmentStep
-          config={config}
-          context={context}
-          gitBranch={gitBranch}
-          currentStep={currentStep}
-          loadingAction={loadingAction}
-          onAction={handleAction}
-        />
-      );
-
-    case 'testing':
-      return (
-        <TestingStep
-          config={config}
-          context={context}
-          gitBranch={gitBranch}
-          currentStep={currentStep}
-          loadingAction={loadingAction}
-          onAction={handleAction}
-        />
-      );
-
-    case 'acceptance':
-      return (
-        <AcceptanceStep
-          config={config}
-          context={context}
-          gitBranch={gitBranch}
-          currentStep={currentStep}
-          loadingAction={loadingAction}
-          onAction={handleAction}
-        />
-      );
+    case 'process':
+      return <GenericProcessStep {...commonProps} />;
 
     case 'release':
-      return (
-        <ReleaseStep
-          config={config}
-          context={context}
-          gitBranch={gitBranch}
-          currentStep={currentStep}
-          loadingAction={loadingAction}
-          onAction={handleAction}
-          form={form}
-          releaseBranches={releaseBranches}
-        />
-      );
+      return <ReleaseStep {...commonProps} releaseBranches={releaseBranches} form={form} />;
 
     default:
       return (
-        <Result
-          status="500"
-          title="Unknown Step"
-          subTitle={`Step ID "${currentStep.id}" is not recognized.`}
-          extra={<Button type="primary">Reload</Button>}
-        />
+        <div className="p-4 text-center">
+          <p>Unknown Step Type: {viewingStep.type}</p>
+          <p>ID: {viewingStep.id}</p>
+        </div>
       );
   }
 };

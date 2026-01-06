@@ -18,6 +18,12 @@ interface AcceptanceStepProps {
   currentStep: IStepDefinition;
   loadingAction: string | null;
   onAction: (action: IActionDefinition) => void;
+  // New props
+  isReadOnly?: boolean;
+  onGoToActive?: () => void;
+  onBack?: () => void;
+  onStepClick?: (stepId: string) => void;
+  activeStepId?: string;
 }
 
 export const AcceptanceStep: React.FC<AcceptanceStepProps> = ({
@@ -27,6 +33,9 @@ export const AcceptanceStep: React.FC<AcceptanceStepProps> = ({
   currentStep,
   loadingAction,
   onAction,
+  onBack,
+  onStepClick,
+  activeStepId,
 }) => {
   return (
     <StepLayout
@@ -34,8 +43,10 @@ export const AcceptanceStep: React.FC<AcceptanceStepProps> = ({
       context={context}
       gitBranch={gitBranch}
       currentStep={currentStep}
-      showSteps={true}
-      showStatusCard={true}
+      title="Acceptance"
+      onBack={onBack}
+      onStepClick={onStepClick}
+      activeStepId={activeStepId}
       footer={
         <StepActions
           actions={currentStep.actions}

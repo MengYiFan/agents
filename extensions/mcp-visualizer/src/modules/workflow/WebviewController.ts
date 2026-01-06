@@ -134,7 +134,7 @@ export class WebviewController implements vscode.Disposable {
         // Scene A: Non-Dev Branch.
         // Force 'init' step context for virtual view if needed, but usually we just stay on step 0.
         context = {
-          currentStep: 'init',
+          currentStep: 'setup',
           history: [],
           data: { ...context?.data },
           branch: branch,
@@ -144,7 +144,7 @@ export class WebviewController implements vscode.Disposable {
         // Scene B: Feature Branch.
         // Update Init Step actions to be "Save & Next" instead of "Create Branch"
         const initStep = dynamicConfig.steps.find(
-          (s: unknown) => (s as { id: string }).id === 'init',
+          (s: unknown) => (s as { id: string }).id === 'setup',
         );
         if (initStep) {
           initStep.actions = [
@@ -272,7 +272,7 @@ export class WebviewController implements vscode.Disposable {
 
     if (!isFeatureBranch) {
       context = {
-        currentStep: 'init',
+        currentStep: 'setup',
         history: [],
         data: { ...context?.data },
         branch: branch,
@@ -281,7 +281,7 @@ export class WebviewController implements vscode.Disposable {
     } else {
       // Scene B: Feature Branch. Update Init Step actions.
       const initStep = dynamicConfig.steps.find(
-        (s: unknown) => (s as { id: string }).id === 'init',
+        (s: unknown) => (s as { id: string }).id === 'setup',
       );
       if (initStep) {
         initStep.actions = [

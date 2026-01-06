@@ -18,6 +18,12 @@ interface TestingStepProps {
   currentStep: IStepDefinition;
   loadingAction: string | null;
   onAction: (action: IActionDefinition) => void;
+  // New props
+  isReadOnly?: boolean;
+  onGoToActive?: () => void;
+  onBack?: () => void;
+  onStepClick?: (stepId: string) => void;
+  activeStepId?: string;
 }
 
 export const TestingStep: React.FC<TestingStepProps> = ({
@@ -27,6 +33,9 @@ export const TestingStep: React.FC<TestingStepProps> = ({
   currentStep,
   loadingAction,
   onAction,
+  onBack,
+  onStepClick,
+  activeStepId,
 }) => {
   return (
     <StepLayout
@@ -34,8 +43,10 @@ export const TestingStep: React.FC<TestingStepProps> = ({
       context={context}
       gitBranch={gitBranch}
       currentStep={currentStep}
-      showSteps={true}
-      showStatusCard={true}
+      title="Testing"
+      onBack={onBack}
+      onStepClick={onStepClick}
+      activeStepId={activeStepId}
       footer={
         <StepActions
           actions={currentStep.actions}

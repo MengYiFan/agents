@@ -11,6 +11,10 @@ export interface IFieldDefinition {
   pattern?: string; // Regex string
   defaultValue?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   default?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  // Layout properties
+  colSpan?: number; // 1-24
+  group?: string; // Grouping identifier
+  icon?: string; // Icon identifier
 }
 
 export interface IActionDefinition {
@@ -56,6 +60,15 @@ export interface IStepDefinition {
 export interface IWorkflowConfig {
   version: string;
   branchPattern?: Record<string, string>; // e.g. { development: "^feature/.*" }
+  // Multiple workflow definitions
+  workflows?: {
+    [key: string]: {
+      label: string;
+      description?: string;
+      steps: IStepDefinition[];
+    };
+  };
+  // Fallback for single workflow structure
   steps: IStepDefinition[];
 }
 

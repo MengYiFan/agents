@@ -54,5 +54,12 @@
     "quickActions": "快捷操作",
     "loadingWorkflow": "加载工作流中...",
     "checkingContext": "检查工作流上下文..."
+  },
+  "steps": {
+    "setup": { "name": "初始化", "title": "初始化阶段", "description": "准备" },
+    "development": { "name": "开发", "title": "开发阶段", "description": "编码" },
+    "testing": { "name": "测试", "title": "测试阶段", "description": "验证" },
+    "uat": { "name": "验收", "title": "验收阶段", "description": "评审" },
+    "release": { "name": "发布", "title": "发布阶段", "description": "部署" }
   }
 }

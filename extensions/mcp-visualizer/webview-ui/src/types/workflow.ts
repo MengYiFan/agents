@@ -11,6 +11,10 @@ export interface IFieldDefinition {
   pattern?: string; // Regex string
   defaultValue?: any;
   default?: any; // Alias
+  // Layout properties
+  colSpan?: number; // 1-24
+  group?: string; // Grouping identifier
+  icon?: string; // Icon identifier
 }
 
 export interface IActionDefinition {
@@ -58,6 +62,15 @@ export interface IStepDefinition {
 
 export interface IWorkflowConfig {
   version: string;
+  // Multiple workflow definitions
+  workflows?: {
+    [key: string]: {
+      label: string;
+      description?: string;
+      steps: IStepDefinition[];
+    };
+  };
+  // Fallback for single workflow structure (backwards compatibility)
   steps: IStepDefinition[];
 }
 
