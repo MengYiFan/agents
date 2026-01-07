@@ -1,4 +1,4 @@
-import { Service } from '../../data';
+import { Service } from '@/data';
 
 interface ServiceCardProps {
   service: Service;

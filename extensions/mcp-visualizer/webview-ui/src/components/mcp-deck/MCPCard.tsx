@@ -1,5 +1,5 @@
 import { ArrowRight } from 'lucide-react';
-import { MCP } from '../../data';
+import { MCP } from '@/data';
 
 interface MCPCardProps {
   item: MCP;

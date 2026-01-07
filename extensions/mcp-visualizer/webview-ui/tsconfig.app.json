@@ -16,7 +16,13 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@config/*": ["./src/config/*"],
+      "@modules/*": ["./src/modules/*"],
+      "@services/*": ["./src/services/*"],
+      "@shared/*": ["../src/shared/*"],
+      "@types/*": ["../src/types/*"],
+      "@utils/*": ["./src/utils/*"]
     },
 
     /* Linting */

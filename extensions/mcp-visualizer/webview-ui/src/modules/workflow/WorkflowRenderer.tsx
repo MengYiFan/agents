@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Form } from 'antd';
-import { IWorkflowConfig, IWorkflowContext, IStepDefinition } from '../../types/workflow';
-import { useWorkflowActions } from './hooks/useWorkflowActions';
-import './WorkflowRenderer.css';
+import { IWorkflowConfig, IWorkflowContext, IStepDefinition } from '@/types/workflow';
+import { useWorkflowActions } from '@/modules/workflow/hooks/useWorkflowActions';
+import '@/modules/workflow/WorkflowRenderer.css';
 
 // Steps
-import { SetupStep } from './steps/Setup';
-import { GenericProcessStep } from './steps/GenericProcess';
-import { ReleaseStep } from './steps/Release';
+import { SetupStep } from '@/modules/workflow/steps/Setup';
+import { GenericProcessStep } from '@/modules/workflow/steps/GenericProcess';
+import { ReleaseStep } from '@/modules/workflow/steps/Release';
 
 interface WorkflowRendererProps {
   config: IWorkflowConfig;

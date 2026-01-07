@@ -1,6 +1,6 @@
 import React from 'react';
 import { Form, Input, Select, InputNumber } from 'antd';
-import { IFieldDefinition } from '../../../types/workflow';
+import { IFieldDefinition } from '@/types/workflow';
 
 interface StepFieldProps {
   field: IFieldDefinition;

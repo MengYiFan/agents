@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { App, FormInstance } from 'antd';
-import { IActionDefinition, IStepDefinition } from '../../../types/workflow';
-import { usePostMessage } from '../../../hooks/useVscodeMessage';
+import { IActionDefinition, IStepDefinition } from '@/types/workflow';
+import { usePostMessage } from '@/hooks/useVscodeMessage';
 
 export function useWorkflowActions(form: FormInstance, currentStep: IStepDefinition) {
   const postMessage = usePostMessage();

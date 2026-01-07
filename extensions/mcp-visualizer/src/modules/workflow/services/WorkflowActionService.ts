@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-import { GitService } from '../../../services/git/GitService';
-import { WorkflowStateManager } from '../WorkflowStateManager';
-import { IActionDefinition, IWorkflowContext } from '../types';
+import { GitService } from '@services/git/GitService';
+import { WorkflowStateManager } from '@modules/workflow/WorkflowStateManager';
+import { IActionDefinition, IWorkflowContext } from '@modules/workflow/types';
 
 export class WorkflowActionService {
   constructor(

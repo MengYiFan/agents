@@ -1,12 +1,13 @@
 import * as vscode from 'vscode';
-import { ToWebviewMessage } from '../../common/types';
-import { WorkflowConfigLoader } from './WorkflowConfigLoader';
-import { WorkflowStateManager } from './WorkflowStateManager';
-import { GitService } from '../../services/git/GitService';
-import { IActionDefinition } from './types';
-import { getWorkspaceRoot } from '../../shared/workspace/workspaceRoot';
-import { GitWatcher } from '../../services/git/GitWatcher';
-import { WorkflowActionService } from './services/WorkflowActionService';
+import { ToWebviewMessage } from '@common/types';
+import { WorkflowConfigLoader } from '@modules/workflow/WorkflowConfigLoader';
+import { WorkflowStateManager } from '@modules/workflow/WorkflowStateManager';
+import { GitService } from '@services/git/GitService';
+import { IActionDefinition } from '@modules/workflow/types';
+import { getWorkspaceRoot } from '@shared/workspace/workspaceRoot';
+import { GitWatcher } from '@services/git/GitWatcher';
+import { WorkflowActionService } from '@modules/workflow/services/WorkflowActionService';
+import { MessageRouter, WebviewMessage } from '@modules/workflow/MessageRouter';
 
 /**
  * Controller for the Workflow Webview.
@@ -19,6 +20,7 @@ export class WebviewController implements vscode.Disposable {
   private readonly gitService: GitService;
   private readonly gitWatcher: GitWatcher;
   private readonly actionService: WorkflowActionService;
+  private readonly messageRouter: MessageRouter;
   private readonly root: string;
 
   constructor(
@@ -34,14 +36,42 @@ export class WebviewController implements vscode.Disposable {
     this.gitWatcher = new GitWatcher(this.root);
     this.actionService = new WorkflowActionService(this.gitService, this.stateManager);
 
+    // Initialize Message Router
+    this.messageRouter = new MessageRouter();
+    this._registerMessageHandlers();
+
     this._setupMessageListener();
     this._setupThemeListener();
     this._setupGitListener();
   }
 
+  /**
+   * 注册消息处理器 - Register Message Handlers
+   */
+  private _registerMessageHandlers() {
+    this.messageRouter.register('webview:ready', async () => {
+      this._updateTheme();
+      await this.initializeWorkflow();
+    });
+
+    this.messageRouter.register('executeAction', async (payload) => {
+      await this.handleExecuteAction(
+        payload as {
+          action: IActionDefinition;
+          stepId: string;
+          data: Record<string, unknown>;
+        },
+      );
+    });
+
+    this.messageRouter.register('workflow:log', async (payload) => {
+      console.log(`[Webview Log]: ${payload}`);
+    });
+  }
+
   private _setupMessageListener() {
     this._webview.onDidReceiveMessage(
-      (message: any) => this._handleMessage(message), // eslint-disable-line @typescript-eslint/no-explicit-any
+      (message: WebviewMessage) => this._handleMessage(message),
       null,
       this._disposables,
     );
@@ -84,20 +114,11 @@ export class WebviewController implements vscode.Disposable {
     });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private async _handleMessage(message: any) {
-    switch (message.type) {
-      case 'webview:ready':
-        this._updateTheme();
-        await this.initializeWorkflow();
-        break;
-      case 'executeAction':
-        await this.handleExecuteAction(message.payload);
-        break;
-      case 'workflow:log':
-        console.log(`[Webview Log]: ${message.payload}`);
-        break;
-    }
+  /**
+   * 处理来自 Webview 的消息 - Handle messages using MessageRouter
+   */
+  private async _handleMessage(message: WebviewMessage) {
+    await this.messageRouter.dispatch(message);
   }
 
   private async initializeWorkflow() {

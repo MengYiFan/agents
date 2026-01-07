@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  ChevronLeft,
   Moon,
   Sun,
   Globe,
@@ -10,8 +9,10 @@ import {
   ExternalLink,
   ChevronRight,
   Book,
+  GitBranch,
 } from 'lucide-react';
-import { useTranslation } from '../hooks/useTranslation';
+import { useTranslation } from '@/hooks/useTranslation';
+import { PageHeader } from '@/components/common';
 
 interface SettingsPageProps {
   onBack: () => void;
@@ -58,6 +59,10 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     status: 'online',
   };
 
+  // Git Backend State
+  const [gitBackend, setGitBackend] = useState<'git' | 'yummy'>('git');
+  const [isGitBackendOpen, setIsGitBackendOpen] = useState(false);
+
   const getLanguageLabel = (l: string) => {
     return l === 'zh-CN' ? t('settings.language.chinese') : t('settings.language.english');
   };
@@ -65,15 +70,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   return (
     <div className="settings-page-container w-full h-full flex flex-col gap-6 px-5">
       {/* Header */}
-      <div className="settings-header flex items-center justify-between pt-3 pb-1">
-        <div className="text-xl font-bold text-gray-900 dark:text-white">{t('settings.title')}</div>
-        <button
-          onClick={onBack}
-          className="p-1 -mr-1 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-        >
-          <ChevronLeft className="w-6 h-6 text-gray-400 dark:text-gray-400" />
-        </button>
-      </div>
+      <PageHeader title={t('settings.title')} showBack onBack={onBack} />
 
       {/* 2. User Profile Section */}
       <div className="settings-profile-section bg-white dark:bg-[#1e293b] p-4 rounded-2xl shadow-sm flex items-center gap-4">
@@ -251,6 +248,65 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
             <button className="text-xs font-bold px-3 py-1.5 bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 rounded-lg">
               Standard
             </button>
+          </div>
+
+          {/* Git Backend Dropdown */}
+          <div className="settings-git-backend-section relative">
+            <button
+              onClick={() => setIsGitBackendOpen(!isGitBackendOpen)}
+              className="w-full flex items-center justify-between p-4 bg-white dark:bg-[#1e293b] rounded-2xl border border-transparent hover:border-gray-200 dark:hover:border-slate-700 transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-cyan-50 dark:bg-cyan-900/20 flex items-center justify-center">
+                  <GitBranch className="w-5 h-5 text-cyan-500" />
+                </div>
+                <div>
+                  <div className="font-medium text-gray-900 dark:text-white">Git Backend</div>
+                  <div className="text-xs text-gray-500">Choose git or yummy CLI</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold px-3 py-1.5 bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 rounded-lg">
+                  {gitBackend === 'git' ? 'simple-git' : 'yummy'}
+                </span>
+                <ChevronRight
+                  size={16}
+                  className={`transition-transform text-gray-400 ${isGitBackendOpen ? 'rotate-90' : ''}`}
+                />
+              </div>
+            </button>
+
+            {isGitBackendOpen && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#1e293b] rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200">
+                <button
+                  onClick={() => {
+                    setGitBackend('git');
+                    setIsGitBackendOpen(false);
+                  }}
+                  className={`w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center justify-between ${gitBackend === 'git' ? 'text-blue-500 font-medium' : ''}`}
+                >
+                  <div>
+                    <div>simple-git</div>
+                    <div className="text-xs text-gray-400">Default Node.js Git wrapper</div>
+                  </div>
+                  {gitBackend === 'git' && <div className="w-2 h-2 rounded-full bg-blue-500" />}
+                </button>
+                <div className="h-px bg-gray-100 dark:bg-gray-700" />
+                <button
+                  onClick={() => {
+                    setGitBackend('yummy');
+                    setIsGitBackendOpen(false);
+                  }}
+                  className={`w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center justify-between ${gitBackend === 'yummy' ? 'text-blue-500 font-medium' : ''}`}
+                >
+                  <div>
+                    <div>yummy</div>
+                    <div className="text-xs text-gray-400">AI-powered Git workflow CLI</div>
+                  </div>
+                  {gitBackend === 'yummy' && <div className="w-2 h-2 rounded-full bg-blue-500" />}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Auto-Save Toggle */}

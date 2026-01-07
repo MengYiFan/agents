@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import type { ExtensionContext } from 'vscode';
-import { BaseCommand } from '../../../shared/commands/baseCommand';
-import { VisualizerViewProvider } from '../providers/visualizerViewProvider';
-import { getMessages, type Locale } from '../../../shared/localization/messages';
+import { BaseCommand } from '@shared/commands/baseCommand';
+import { VisualizerViewProvider } from '@modules/mcp/providers/visualizerViewProvider';
+import { getMessages, type Locale } from '@shared/localization/messages';
 
 export class RefreshVisualizerCommand extends BaseCommand {
   constructor(

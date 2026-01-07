@@ -1,5 +1,5 @@
 import { ArrowRight } from 'lucide-react';
-import { QuickAction } from '../../data';
+import { QuickAction } from '@/data';
 
 interface QuickActionCardProps {
   action: QuickAction;

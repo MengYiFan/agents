@@ -1,13 +1,13 @@
 import { useEffect } from 'react';
-import { vscode } from '../lib/vscode';
+import { vscode } from '@/lib/vscode';
 
 /**
  * Hook to send messages to the VS Code Extension
  */
 export const usePostMessage = () => {
-    return (message: any) => {
-        vscode.postMessage(message);
-    };
+  return (message: any) => {
+    vscode.postMessage(message);
+  };
 };
 
 /**
@@ -16,18 +16,18 @@ export const usePostMessage = () => {
  * @param deps Dependencies for the useEffect
  */
 export const useReceiveMessage = (handler: (message: any) => void, deps: any[] = []) => {
-    useEffect(() => {
-        const eventHandler = (event: MessageEvent) => {
-            const message = event.data;
-            if (message) {
-                handler(message);
-            }
-        };
+  useEffect(() => {
+    const eventHandler = (event: MessageEvent) => {
+      const message = event.data;
+      if (message) {
+        handler(message);
+      }
+    };
 
-        window.addEventListener('message', eventHandler);
-        
-        return () => {
-            window.removeEventListener('message', eventHandler);
-        };
-    }, deps);
+    window.addEventListener('message', eventHandler);
+
+    return () => {
+      window.removeEventListener('message', eventHandler);
+    };
+  }, deps);
 };

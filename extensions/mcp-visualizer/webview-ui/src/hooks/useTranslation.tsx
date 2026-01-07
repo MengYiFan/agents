@@ -1,6 +1,6 @@
 import { useState, useEffect, createContext, useContext } from 'react';
-import en from '../i18n/en.json';
-import cn from '../i18n/cn.json';
+import en from '@/i18n/en.json';
+import cn from '@/i18n/cn.json';
 
 type Locale = 'en-US' | 'zh-CN';
 

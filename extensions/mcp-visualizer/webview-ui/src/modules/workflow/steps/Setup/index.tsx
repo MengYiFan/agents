@@ -24,8 +24,8 @@ import {
   CopyOutlined,
   CheckCircleOutlined,
 } from '@ant-design/icons';
-import { IWorkflowConfig, IActionDefinition, IStepDefinition } from '../../../../types/workflow';
-import { StepLayout } from '../../common/StepLayout';
+import { IWorkflowConfig, IActionDefinition, IStepDefinition } from '@/types/workflow';
+import { StepLayout } from '@/modules/workflow/common/StepLayout';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -272,48 +272,62 @@ export const SetupStep: React.FC<SetupStepProps> = ({
                 .map((field: any) => renderField(field))}
             </Row>
 
-            {/* Technical Plans Group */}
-            {currentStep.fields?.some((f: any) => f.group === 'Technical Plans') && (
-              <div className="mt-2">
-                <Collapse
-                  ghost
-                  expandIcon={({ isActive }) => (
-                    <PlusCircleOutlined
-                      rotate={isActive ? 45 : 0}
-                      className="text-blue-500 text-lg"
-                    />
-                  )}
-                  expandIconPosition="start"
-                  className="site-collapse-custom-collapse"
-                >
-                  <Collapse.Panel
-                    header={
-                      <span className="text-blue-500 font-medium">
-                        Add Technical Plans (Optional)
-                      </span>
-                    }
-                    key="1"
-                    className="!p-0"
-                  >
-                    <div className="pt-2">
-                      <Row gutter={12}>
-                        {currentStep.fields
-                          ?.filter((f: any) => f.group === 'Technical Plans')
-                          .map((field: any) => renderField(field))}
-                      </Row>
-                    </div>
-                  </Collapse.Panel>
-                </Collapse>
-              </div>
-            )}
+            {/* Dynamic Groups */}
+            {currentStep.groups?.map((group) => {
+              const groupFields = currentStep.fields?.filter((f: any) => f.group === group.id);
+              if (!groupFields || groupFields.length === 0) return null;
 
-            {/* Other Groups (Advanced etc) */}
-            {/* We can iterate unique groups if needed, but for now specific handling for Plans matches design */}
-            {currentStep.fields?.some((f: any) => f.group && f.group !== 'Technical Plans') && (
+              const content = (
+                <Row gutter={12}>{groupFields.map((field: any) => renderField(field))}</Row>
+              );
+
+              if (group.collapsible) {
+                return (
+                  <div key={group.id} className="mt-2">
+                    <Collapse
+                      ghost
+                      defaultActiveKey={group.defaultCollapsed ? undefined : [group.id]}
+                      expandIcon={({ isActive }) => (
+                        <PlusCircleOutlined
+                          rotate={isActive ? 45 : 0}
+                          className="text-blue-500 text-lg"
+                        />
+                      )}
+                      expandIconPosition="start"
+                      className="site-collapse-custom-collapse"
+                    >
+                      <Collapse.Panel
+                        header={<span className="text-blue-500 font-medium">{group.label}</span>}
+                        key={group.id}
+                        className="!p-0"
+                      >
+                        <div className="pt-2">{content}</div>
+                      </Collapse.Panel>
+                    </Collapse>
+                  </div>
+                );
+              }
+
+              return (
+                <div key={group.id} className="mt-4">
+                  <div className="group-header mb-2 font-medium text-gray-700 dark:text-gray-300">
+                    {group.label}
+                  </div>
+                  {content}
+                </div>
+              );
+            })}
+
+            {/* Fallback for fields with legacy groups not in definitions */}
+            {currentStep.fields?.some(
+              (f: any) => f.group && !currentStep.groups?.find((g) => g.id === f.group),
+            ) && (
               <div className="mt-4">
                 <Row gutter={12}>
                   {currentStep.fields
-                    ?.filter((f: any) => f.group && f.group !== 'Technical Plans')
+                    ?.filter(
+                      (f: any) => f.group && !currentStep.groups?.find((g) => g.id === f.group),
+                    )
                     .map((field: any) => renderField(field))}
                 </Row>
               </div>

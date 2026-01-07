@@ -1,5 +1,5 @@
 import type { ExtensionContext } from 'vscode';
-import { registerFeatures } from './activation/registerFeatures';
+import { registerFeatures } from '@activation/registerFeatures';
 
 export function activate(context: ExtensionContext) {
   registerFeatures(context);

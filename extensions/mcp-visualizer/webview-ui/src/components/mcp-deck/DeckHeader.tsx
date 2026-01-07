@@ -1,7 +1,7 @@
 import { Puzzle } from 'lucide-react';
-import { HeaderActions } from './HeaderActions';
+import { HeaderActions } from '@/components/mcp-deck/HeaderActions';
 
-import { useTranslation } from '../../hooks/useTranslation';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface DeckHeaderProps {
   mode: 'light' | 'dark';
@@ -23,7 +23,7 @@ export function DeckHeader({
   const { t } = useTranslation();
 
   return (
-    <div className="deck-header-container flex flex-col gap-4 pt-3 pb-1">
+    <div className="deck-header-container sticky top-0 z-50 flex flex-col gap-4 pt-3 pb-1 bg-background">
       {/* Top Bar */}
       <header className="deck-header-top-bar flex items-center justify-between">
         <div className="deck-header-title-group flex items-center gap-2">

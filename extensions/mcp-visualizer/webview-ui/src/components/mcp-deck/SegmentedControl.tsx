@@ -1,5 +1,5 @@
 import { LayoutGrid, Workflow } from 'lucide-react';
-import { useTranslation } from '../../hooks/useTranslation';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface SegmentedControlProps {
   activeTab: 'list' | 'workflow';

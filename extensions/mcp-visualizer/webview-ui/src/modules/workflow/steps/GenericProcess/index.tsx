@@ -5,14 +5,16 @@ import {
   ArrowRightOutlined,
   DeploymentUnitOutlined,
   CheckCircleOutlined,
+  BgColorsOutlined,
 } from '@ant-design/icons';
 import {
   IWorkflowConfig,
   IWorkflowContext,
   IStepDefinition,
   IActionDefinition,
-} from '../../../../types/workflow';
-import { StepLayout } from '../../common/StepLayout';
+} from '@/types/workflow';
+import { StepLayout } from '@/modules/workflow/common/StepLayout';
+import { ActionCard, ActionCardGroup } from '@/components/ui';
 
 interface GenericProcessStepProps {
   config: IWorkflowConfig;
@@ -150,37 +152,29 @@ export const GenericProcessStep: React.FC<GenericProcessStepProps> = ({
         </div>
 
         {/* 2. Resources (Common for all steps) */}
-        <div className="resources-section">
-          <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">
-            Project Resources
-          </div>
-          <div className="space-y-3">
-            {/* PRD Link */}
-            {context.data.prdLink && (
-              <div
-                className="resource-card bg-white dark:bg-[#1e293b] p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex items-center justify-between hover:border-blue-200 dark:hover:border-blue-800 transition-colors cursor-pointer group"
-                onClick={() => window.open(context.data.prdLink, '_blank')}
-              >
-                <div className="flex items-center gap-3 overflow-hidden">
-                  <div className="w-10 h-10 rounded-lg bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-500 border border-orange-100 dark:border-orange-900/30 shrink-0">
-                    <FileTextOutlined className="text-lg" />
-                  </div>
-                  <div className="flex flex-col overflow-hidden">
-                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-200 group-hover:text-blue-600 transition-colors truncate">
-                      Product Requirements
-                    </span>
-                    <span className="text-xs text-gray-400 truncate max-w-[200px]">
-                      {context.data.prdLink}
-                    </span>
-                  </div>
-                </div>
-                <ArrowRightOutlined className="text-gray-300 group-hover:text-blue-500 -rotate-45 shrink-0" />
-              </div>
-            )}
+        <ActionCardGroup title="Project Resources">
+          {/* PRD Link */}
+          {context.data.prdLink && (
+            <ActionCard
+              icon={<FileTextOutlined className="text-lg" />}
+              iconTheme="orange"
+              title="Product Requirements"
+              description={context.data.prdLink}
+              href={context.data.prdLink}
+            />
+          )}
 
-            {/* Other resources similar to DevelopmentStep if needed */}
-          </div>
-        </div>
+          {/* Design Link */}
+          {context.data.designLink && (
+            <ActionCard
+              icon={<BgColorsOutlined className="text-lg" />}
+              iconTheme="purple"
+              title="Design Mockups"
+              description={context.data.designLink}
+              href={context.data.designLink}
+            />
+          )}
+        </ActionCardGroup>
       </div>
 
       {/* Info Alert */}
@@ -189,7 +183,7 @@ export const GenericProcessStep: React.FC<GenericProcessStepProps> = ({
           <div className="max-w-4xl mx-auto pointer-events-auto">
             <Alert
               message="Deep Research Insight"
-              description={context.data.info}
+              description={String(context.data.info)}
               type="info"
               showIcon
               className="shadow-lg border-blue-100 dark:border-blue-900/30 bg-blue-50/90 dark:bg-blue-900/20 backdrop-blur-sm"

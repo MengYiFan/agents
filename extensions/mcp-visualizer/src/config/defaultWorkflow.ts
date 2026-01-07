@@ -1,11 +1,25 @@
-import { IWorkflowConfig } from '../modules/workflow/types';
+import { IWorkflowConfig, IStepDefinition } from '../modules/workflow/types';
 
-const FEATURE_STEPS = [
+const FEATURE_STEPS: IStepDefinition[] = [
   {
     id: 'setup',
     label: 'Create New Feature',
     type: 'form',
     trigger: 'default',
+    groups: [
+      {
+        id: 'plans',
+        label: 'Technical Plans',
+        collapsible: true,
+        defaultCollapsed: true,
+      },
+      {
+        id: 'advanced',
+        label: 'Advanced Settings',
+        collapsible: true,
+        defaultCollapsed: false,
+      },
+    ],
     fields: [
       { key: 'prdLink', label: 'PRD Link', type: 'url', required: true, icon: 'link' },
       { key: 'designLink', label: 'Design Link', type: 'url', icon: 'design' },
@@ -33,14 +47,14 @@ const FEATURE_STEPS = [
         key: 'backendPlan',
         label: 'Backend Plan URL',
         type: 'url',
-        group: 'Technical Plans',
+        group: 'plans',
         icon: 'plan',
       },
       {
         key: 'frontendPlan',
         label: 'Frontend Plan URL',
         type: 'url',
-        group: 'Technical Plans',
+        group: 'plans',
         icon: 'plan',
       },
 
@@ -51,7 +65,7 @@ const FEATURE_STEPS = [
         options: ['master', 'main'],
         default: 'master',
         required: true,
-        group: 'Advanced', // Put in separate group or handle generic
+        group: 'advanced',
       },
     ],
     actions: [
@@ -156,8 +170,8 @@ export const DEFAULT_WORKFLOW_CONFIG: IWorkflowConfig = {
     feature: {
       label: 'Feature Development',
       description: 'Standard feature lifecycle',
-      steps: FEATURE_STEPS as any, // Cast to match type if needed, but structure matches
+      steps: FEATURE_STEPS,
     },
   },
-  steps: FEATURE_STEPS as any, // Legacy/Default fallback
+  steps: FEATURE_STEPS,
 };

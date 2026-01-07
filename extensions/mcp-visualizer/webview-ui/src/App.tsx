@@ -10,12 +10,12 @@ import { ServiceCard } from '@/components/mcp-deck/ServiceCard';
 import { SegmentedControl } from '@/components/mcp-deck/SegmentedControl';
 import { MCPCard } from '@/components/mcp-deck/MCPCard';
 import { QuickActionCard } from '@/components/mcp-deck/QuickActionCard';
-import { activeServices, availableMCPs, quickActions } from './data';
+import { activeServices, availableMCPs, quickActions } from '@/data';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import { toggleTheme } from '@/store/slices/themeSlice';
-import SettingsPage from './components/SettingsPage';
-import { I18nProvider, useTranslation } from './hooks/useTranslation';
+import SettingsPage from '@/components/SettingsPage';
+import { I18nProvider, useTranslation } from '@/hooks/useTranslation';
 
 // Inner component to use translation hook
 const MainContent = ({

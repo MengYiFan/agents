@@ -32,7 +32,7 @@ const vscodeThemeToken = {
 };
 
 import { useSelector } from 'react-redux';
-import { RootState } from '../store';
+import { RootState } from '@/store';
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Get theme from Redux

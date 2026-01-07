@@ -1,9 +1,9 @@
 import React, { ReactNode } from 'react';
 import { Button, Steps } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
-import { HeaderActions } from '../../../components/mcp-deck/HeaderActions';
-import { useTranslation } from '../../../hooks/useTranslation';
-import { IWorkflowConfig, IWorkflowContext, IStepDefinition } from '../../../types/workflow';
+import { HeaderActions } from '@/components/mcp-deck/HeaderActions';
+import { useTranslation } from '@/hooks/useTranslation';
+import { IWorkflowConfig, IWorkflowContext, IStepDefinition } from '@/types/workflow';
 
 interface StepLayoutProps {
   config?: IWorkflowConfig;

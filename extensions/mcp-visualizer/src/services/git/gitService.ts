@@ -1,21 +1,15 @@
 import * as vscode from 'vscode';
 import simpleGit, { SimpleGit, ResetMode } from 'simple-git';
-import { GitOperationError, GitErrorType } from '../../common/errors/GitOperationError';
-
-export interface GitInfo {
-  currentBranch: string;
-  isClean: boolean;
-  uncommittedChanges: number;
-  hasUncommitted: boolean;
-  userName?: string;
-  userEmail?: string;
-}
+import { GitOperationError, GitErrorType } from '@common/errors/GitOperationError';
+import { IGitOperations, GitInfo } from '@services/git/IGitOperations';
 
 /**
  * Service to handle all Git operations for the Workflow module.
  * Wraps simple-git and provides atomic operations with error handling.
+ *
+ * Implements IGitOperations interface for backend abstraction.
  */
-export class GitService {
+export class GitService implements IGitOperations {
   private git: SimpleGit;
 
   // Event emitter for branch changes
@@ -143,9 +137,28 @@ export class GitService {
     }
   }
 
+  /**
+   * 添加 Tag - 如果已存在则先删除再重新创建
+   */
   public async addTag(tagName: string): Promise<void> {
     try {
-      await this.retryWithLockCheck(async () => await this.git.addTag(tagName));
+      await this.retryWithLockCheck(async () => {
+        // 检查 tag 是否已存在
+        const tags = await this.git.tags();
+        if (tags.all.includes(tagName)) {
+          console.log(`Tag '${tagName}' already exists. Deleting and recreating...`);
+          // 删除本地 tag
+          await this.git.tag(['-d', tagName]);
+          // 删除远程 tag (忽略错误，可能不存在)
+          try {
+            await this.git.push(['origin', `:refs/tags/${tagName}`]);
+          } catch (e) {
+            console.warn(`Failed to delete remote tag '${tagName}' (may not exist):`, e);
+          }
+        }
+        // 创建新 tag
+        await this.git.addTag(tagName);
+      });
     } catch (error) {
       throw this.handleError(`Failed to add tag ${tagName}`, error);
     }

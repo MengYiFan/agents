@@ -6,7 +6,7 @@ import {
   CheckCircleOutlined,
   BranchesOutlined,
 } from '@ant-design/icons';
-import { IActionDefinition, IStepDefinition } from '../../../types/workflow';
+import { IActionDefinition, IStepDefinition } from '@/types/workflow';
 
 interface StepActionsProps {
   actions?: IActionDefinition[]; // Some steps might override actions via props, or we use from stepDef

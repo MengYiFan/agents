@@ -1,26 +1,27 @@
 import * as vscode from 'vscode';
-import { LIFECYCLE_STAGES } from '../data/lifecycleStages';
+import { LIFECYCLE_STAGES } from '@modules/mcp/data/lifecycleStages';
 import {
   collectDocs,
   DEFAULT_DOC_DIRECTORIES,
   loadDocContent,
-} from '../../../services/docs/documentService';
-// import { checkoutBranch } from '../../../services/git/gitOperations';
-// import { executeLifecycleAction } from '../../../services/git/lifecycleAutomation';
-import type { LifecycleStage, McpDocEntry, StageAction, SupportedLanguage } from '../../../types';
-import { getWorkspaceRoot } from '../../../shared/workspace/workspaceRoot';
-import { getWebviewHtml } from '../webview/htmlFactory';
-import { INSTRUCTION_ITEMS } from '../data/instructionCatalog';
-import { WORKFLOW_STEPS } from '../data/workflowSteps';
-import { executeInstructionAction } from '../../../services/instructions/instructionService';
-import { getAuthorizationStatuses } from '../../../services/auth/authorizationStatusService';
-import { getUiText, resolveSupportedLanguage } from '../../../shared/localization/i18n';
-import type { UiText } from '../../../shared/localization/i18n';
-import { GitService, GitInfo } from '../../../services/git/GitService';
-import { WorkflowService } from '../../../services/workflow/workflowService';
-import type { WorkflowStageId } from '../../../services/workflow/workflowService';
-import { AgentService } from '../../../services/mcp/agentService';
-import { WebviewController } from '../../workflow/WebviewController';
+} from '@services/docs/documentService';
+// import { checkoutBranch } from '@services/git/gitOperations';
+// import { executeLifecycleAction } from '@services/git/lifecycleAutomation';
+import type { LifecycleStage, McpDocEntry, StageAction, SupportedLanguage } from '@/types';
+import { getWorkspaceRoot } from '@shared/workspace/workspaceRoot';
+import { getWebviewHtml } from '@modules/mcp/webview/htmlFactory';
+import { INSTRUCTION_ITEMS } from '@modules/mcp/data/instructionCatalog';
+import { WORKFLOW_STEPS } from '@modules/mcp/data/workflowSteps';
+import { executeInstructionAction } from '@services/instructions/instructionService';
+import { getAuthorizationStatuses } from '@services/auth/authorizationStatusService';
+import { getUiText, resolveSupportedLanguage } from '@shared/localization/i18n';
+import type { UiText } from '@shared/localization/i18n';
+import { GitService } from '@services/git/GitService';
+import { GitInfo } from '@services/git/IGitOperations';
+import { WorkflowService } from '@services/workflow/workflowService';
+import type { WorkflowStageId } from '@services/workflow/workflowService';
+import { AgentService } from '@services/mcp/agentService';
+import { WebviewController } from '@modules/workflow/WebviewController';
 
 interface WebviewMessage {
   type:

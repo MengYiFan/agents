@@ -5,8 +5,8 @@ import {
   IWorkflowContext,
   IStepDefinition,
   IActionDefinition,
-} from '../../../../types/workflow';
-import { StepLayout } from '../../common/StepLayout';
+} from '@/types/workflow';
+import { StepLayout } from '@/modules/workflow/common/StepLayout';
 
 interface ReleaseStepProps {
   config: IWorkflowConfig;
