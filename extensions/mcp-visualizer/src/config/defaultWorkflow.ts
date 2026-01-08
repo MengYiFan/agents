@@ -1,4 +1,4 @@
-import { IWorkflowConfig, IStepDefinition } from '../modules/workflow/types';
+import { IWorkflowConfig, IStepDefinition } from '@modules/workflow/types';
 
 const FEATURE_STEPS: IStepDefinition[] = [
   {

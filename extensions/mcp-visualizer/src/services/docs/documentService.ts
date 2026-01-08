@@ -2,7 +2,7 @@ import * as path from 'path';
 import { promises as fs } from 'fs';
 import type { Dirent } from 'fs';
 import { marked } from 'marked';
-import type { DocVariant, McpDocEntry, SupportedLanguage } from '../../types';
+import type { DocVariant, McpDocEntry, SupportedLanguage } from '@/types';
 
 const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
   'zh-CN': '中文',

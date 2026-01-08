@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
-import { WorkflowActionService } from '../modules/workflow/services/WorkflowActionService';
-import { MockGitService } from './mocks/MockGitService';
-import { MockStateManager } from './mocks/MockStateManager';
+import { WorkflowActionService } from '@modules/workflow/services/WorkflowActionService';
+import { MockGitService } from '@test/mocks/MockGitService';
+import { MockStateManager } from '@test/mocks/MockStateManager';
 import * as assert from 'assert';
 
 // Mock VS Code Window

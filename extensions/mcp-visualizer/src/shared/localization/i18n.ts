@@ -1,4 +1,4 @@
-import type { SupportedLanguage } from '../../types';
+import type { SupportedLanguage } from '@/types';
 
 export type DiagramText = {
   lanes: {

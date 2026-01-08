@@ -1,7 +1,7 @@
 import * as path from 'path';
 import { promises as fs } from 'fs';
 import * as vscode from 'vscode';
-import { getWorkspaceRoot } from '../../shared/workspace/workspaceRoot';
+import { getWorkspaceRoot } from '@shared/workspace/workspaceRoot';
 
 export interface ProjectStandardSource {
   id: string;

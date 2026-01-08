@@ -1,7 +1,7 @@
 import * as path from 'path';
 import { promises as fs } from 'fs';
-import { IWorkflowConfig } from './types';
-import { DEFAULT_WORKFLOW_CONFIG } from '../../config/defaultWorkflow';
+import { IWorkflowConfig } from '@modules/workflow/types';
+import { DEFAULT_WORKFLOW_CONFIG } from '@config/defaultWorkflow';
 
 /**
  * Loads the Workflow Configuration.

@@ -1,9 +1,12 @@
 import * as path from 'path';
 import { promises as fs } from 'fs';
 import * as vscode from 'vscode';
-import type { InstructionActionId } from '../../types';
-import { getWorkspaceRoot } from '../../shared/workspace/workspaceRoot';
-import { resolveContext7Presets, resolveProjectStandardSource } from './instructionConfigs';
+import type { InstructionActionId } from '@/types';
+import { getWorkspaceRoot } from '@shared/workspace/workspaceRoot';
+import {
+  resolveContext7Presets,
+  resolveProjectStandardSource,
+} from '@services/instructions/instructionConfigs';
 
 export async function executeInstructionAction(
   context: vscode.ExtensionContext,

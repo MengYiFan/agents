@@ -1,4 +1,4 @@
-import { IWorkflowContext } from '../../modules/workflow/types';
+import { IWorkflowContext } from '@modules/workflow/types';
 
 export class MockStateManager {
   private context: IWorkflowContext | null = null;

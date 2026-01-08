@@ -1,5 +1,5 @@
-import type { LifecycleStage } from '../../../types';
-import type { DiagramText } from '../../../shared/localization/i18n';
+import type { LifecycleStage } from '@/types';
+import type { DiagramText } from '@shared/localization/i18n';
 
 const BRANCH_LANES = [
   { key: 'feature', y: 200 },

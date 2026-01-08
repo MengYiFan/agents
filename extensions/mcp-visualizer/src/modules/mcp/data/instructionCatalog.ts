@@ -1,4 +1,4 @@
-import type { InstructionCommand } from '../../../types';
+import type { InstructionCommand } from '@/types';
 
 export const INSTRUCTION_ITEMS: InstructionCommand[] = [
   {

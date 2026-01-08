@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import type { AuthorizationStatus } from '../../types';
+import type { AuthorizationStatus } from '@/types';
 
 interface ProviderDefinition {
   id: string;

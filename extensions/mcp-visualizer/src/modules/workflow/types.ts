@@ -3,4 +3,4 @@
  * 保持向后兼容，同时使用统一类型源
  */
 
-export * from '../../shared/types/workflow.types';
+export * from '@shared/types/workflow.types';

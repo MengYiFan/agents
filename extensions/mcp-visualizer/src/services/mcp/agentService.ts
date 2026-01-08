@@ -1,4 +1,4 @@
-import { McpDocEntry } from '../../types';
+import { McpDocEntry } from '@/types';
 
 interface Agent {
   id: string;
@@ -46,9 +46,9 @@ export class AgentService {
                 <li>Model: ${agent.model.name}</li>
                 <li>Tool Choice: ${agent.model.toolChoice}</li>
               </ul>
-            `
-          }
-        ]
+            `,
+          },
+        ],
       }));
     } catch (error) {
       console.error('Error fetching agents:', error);

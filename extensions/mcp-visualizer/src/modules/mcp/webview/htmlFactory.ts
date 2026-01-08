@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
-import type { LifecycleStage, SupportedLanguage } from '../../../types';
-import type { UiText } from '../../../shared/localization/i18n';
-
+import type { LifecycleStage, SupportedLanguage } from '@/types';
+import type { UiText } from '@shared/localization/i18n';
 
 function getNonce(): string {
   let text = '';
@@ -43,4 +42,3 @@ export function getWebviewHtml(
   </body>
 </html>`;
 }
-
