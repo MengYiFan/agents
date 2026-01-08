@@ -78,12 +78,13 @@ export class GitService implements IGitOperations {
   ): Promise<T> {
     try {
       return await operation();
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (retries > 0 && String(error).includes('index.lock')) {
         console.warn(
           `Git index.lock detected. Retrying in ${delay}ms... (${retries} retries left)`,
         );
         await new Promise((resolve) => setTimeout(resolve, delay));
+
         return this.retryWithLockCheck(operation, retries - 1, delay);
       }
       throw error;
@@ -194,8 +195,7 @@ export class GitService implements IGitOperations {
 
       try {
         await this.retryWithLockCheck(async () => await this.git.merge([source]));
-      } catch (mergeError: any) {
-        // eslint-disable-line @typescript-eslint/no-explicit-any
+      } catch (mergeError: unknown) {
         const status = await this.git.status();
         if (status.conflicted.length > 0) {
           throw new GitOperationError(
@@ -249,8 +249,7 @@ export class GitService implements IGitOperations {
     return branchName;
   }
 
-  private handleError(message: string, error: any): GitOperationError {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
+  private handleError(message: string, error: unknown): GitOperationError {
     let type: GitErrorType = 'Unknown';
     const errStr = String(error).toLowerCase();
 
@@ -264,8 +263,9 @@ export class GitService implements IGitOperations {
     ) {
       type = 'Network';
     }
+    const errMessage = error instanceof Error ? error.message : String(error);
 
-    return new GitOperationError(`${message}: ${error.message || error}`, type, error);
+    return new GitOperationError(`${message}: ${errMessage}`, type, error);
   }
 
   public async branchExists(branchName: string): Promise<boolean> {

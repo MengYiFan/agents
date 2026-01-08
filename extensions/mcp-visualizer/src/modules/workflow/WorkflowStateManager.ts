@@ -1,4 +1,3 @@
-import * as vscode from 'vscode';
 import * as path from 'path';
 import { promises as fs } from 'fs';
 import { IWorkflowContext } from '@modules/workflow/types';

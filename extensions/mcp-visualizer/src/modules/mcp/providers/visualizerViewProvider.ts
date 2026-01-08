@@ -50,7 +50,7 @@ interface WebviewMessage {
   workflowStepId?: string;
   link?: string;
   blockId?: string;
-  data?: any;
+  data?: unknown;
   fieldId?: string;
   baseBranch?: string;
   meegleId?: string;
@@ -198,7 +198,7 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
               message.branch,
               message.stageId as WorkflowStageId,
               message.fieldId,
-              message.data,
+              message.data as string,
             );
             this.postMessage({ type: 'workflowUpdated', workflow });
           }

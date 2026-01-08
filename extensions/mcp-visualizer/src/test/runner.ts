@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+/* eslint-disable no-console, @typescript-eslint/no-explicit-any */
 import { WorkflowActionService } from '@modules/workflow/services/WorkflowActionService';
 import { MockGitService } from '@test/mocks/MockGitService';
 import { MockStateManager } from '@test/mocks/MockStateManager';
