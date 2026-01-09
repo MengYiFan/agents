@@ -67,6 +67,11 @@ export class WebviewController implements vscode.Disposable {
     this.messageRouter.register('workflow:log', async (payload) => {
       console.log(`[Webview Log]: ${payload}`);
     });
+
+    // 刷新远程 release 分支
+    this.messageRouter.register('refreshReleaseBranches', async () => {
+      await this.handleRefreshReleaseBranches();
+    });
   }
 
   private _setupMessageListener() {
@@ -241,28 +246,52 @@ export class WebviewController implements vscode.Disposable {
       currentContext.data = { ...currentContext.data, ...data };
       await this.stateManager.saveContext(currentContext);
 
+      let successMessage = '';
+
       switch (action.type) {
         case 'CreateBranch':
           await this.actionService.handleCreateBranch(action, currentContext);
+          successMessage = 'Branch created successfully';
           break;
         case 'GitCommit':
           await this.actionService.handleGitCommit(action);
+          successMessage = 'Code committed successfully';
           break;
         case 'Transition':
           await this.actionService.handleTransition(action, currentContext);
+          successMessage = `Transitioned to ${action.params?.nextStep || 'next step'}`;
           break;
         case 'MergeAndPush':
           await this.actionService.handleMergeAndPush(action, currentContext);
+          successMessage = 'Merge completed successfully';
           break;
         case 'LoadStep':
           await this.actionService.handleLoadStep(action, currentContext);
+          successMessage = '';
           break;
         default:
           vscode.window.showWarningMessage(`Unknown action type: ${action.type}`);
+
+          return;
       }
+
+      // 发送成功响应给前端
+      if (successMessage) {
+        this.postMessage({
+          type: 'action:success',
+          payload: { message: successMessage, actionType: action.type },
+        });
+      }
+
+      // 刷新上下文以更新 UI（对于会改变状态的操作）
+      await this.refreshContext();
     } catch (error) {
       const err = error as Error;
       vscode.window.showErrorMessage(`Action Failed: ${err.message}`);
+      this.postMessage({
+        type: 'action:error',
+        payload: { message: err.message, actionType: action.type },
+      });
     }
   }
 
@@ -339,6 +368,21 @@ export class WebviewController implements vscode.Disposable {
       type: 'workflow:update',
       payload: { context, gitBranch: branch, releaseBranches, config: dynamicConfig },
     });
+  }
+
+  /**
+   * 刷新远程 release 分支列表
+   */
+  private async handleRefreshReleaseBranches() {
+    try {
+      const releaseBranches = await this.gitService.listReleaseBranches(true);
+      this.postMessage({
+        type: 'releaseBranches:update',
+        payload: { releaseBranches },
+      });
+    } catch (error) {
+      console.error('Failed to refresh release branches:', error);
+    }
   }
 
   public postMessage(message: ToWebviewMessage) {

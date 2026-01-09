@@ -55,12 +55,39 @@ export const GenericProcessStep: React.FC<GenericProcessStepProps> = ({
   onToggleLocale,
   onSettings,
 }) => {
+  // 全局 Commit Action - 始终可用
+  const globalCommitAction = {
+    type: 'GitCommit' as const,
+    label: 'Commit',
+    style: 'default' as const,
+    params: {},
+  };
+
   // Footer Content Logic
   const renderFooter = () => {
     if (isReadOnly) {
       return (
-        <div className="flex justify-end">
-          <Button type="default" onClick={onGoToActive} className="flex items-center gap-2">
+        <div className="footer-actions flex gap-3">
+          {/* 全局 Commit 按钮 - 始终可用 */}
+          <Button
+            type="default"
+            size="large"
+            className="footer-btn-commit flex-1 h-12 rounded-xl font-medium bg-white dark:bg-[#333] border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-white hover:border-green-500 hover:text-green-500"
+            loading={loadingAction === 'GitCommit'}
+            onClick={() => onAction(globalCommitAction)}
+          >
+            <span className="flex items-center justify-center gap-2">
+              <CheckCircleOutlined className="text-sm" />
+              Commit
+            </span>
+          </Button>
+          {/* Next 按钮 */}
+          <Button
+            type="primary"
+            size="large"
+            onClick={onGoToActive}
+            className="flex-1 h-12 rounded-xl font-medium bg-blue-600 hover:bg-blue-500 border-none shadow-md flex items-center justify-center gap-2"
+          >
             Next <ArrowRightOutlined />
           </Button>
         </div>
@@ -68,37 +95,41 @@ export const GenericProcessStep: React.FC<GenericProcessStepProps> = ({
     }
 
     const actions = currentStep.actions || [];
-    // Separate Transition actions from others to styling
+    // 分离 Transition 操作和其他操作
     const transitionActions = actions.filter((a) => a.type === 'Transition');
     const otherActions = actions.filter((a) => a.type !== 'Transition');
 
     return (
-      <div className="flex gap-3">
+      <div className="footer-actions flex gap-3">
+        {/* 次要按钮在左边 - Transition 按钮 */}
+        {transitionActions.map((action, idx) => (
+          <Button
+            key={`trans-${idx}`}
+            type="default"
+            size="large"
+            className="footer-btn-secondary flex-1 h-12 rounded-xl font-medium bg-white dark:bg-[#333] border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-white hover:border-blue-500 hover:text-blue-500"
+            loading={loadingAction === action.type}
+            onClick={() => onAction(action)}
+          >
+            <span className="flex items-center justify-center gap-2">
+              {action.label}
+              <ArrowRightOutlined className="text-xs" />
+            </span>
+          </Button>
+        ))}
+
+        {/* 主要按钮在右边 - 其他操作（如 Commit Code） */}
         {otherActions.map((action, idx) => (
           <Button
             key={idx}
-            type={action.style === 'default' ? 'default' : 'primary'}
+            type="primary"
             size="large"
-            className={`flex-1 h-11 rounded-xl font-medium ${action.style !== 'default' ? 'bg-blue-600 hover:bg-blue-500 border-none shadow-md' : ''}`}
+            className="footer-btn-primary flex-1 h-12 rounded-xl font-medium bg-blue-600 hover:bg-blue-500 border-none shadow-md"
             icon={<DeploymentUnitOutlined />}
             loading={loadingAction === action.type}
             onClick={() => onAction(action)}
           >
             {action.label}
-          </Button>
-        ))}
-
-        {transitionActions.map((action, idx) => (
-          <Button
-            key={`trans-${idx}`}
-            size="large"
-            className="flex-1 h-11 rounded-xl font-medium hover:text-blue-500 hover:border-blue-500 dark:bg-[#333] dark:text-white dark:border-gray-600 dark:hover:border-blue-500"
-            onClick={() => onAction(action)}
-          >
-            <div className="flex items-center justify-center gap-2">
-              {action.label}
-              <ArrowRightOutlined className="text-xs" />
-            </div>
           </Button>
         ))}
       </div>

@@ -121,9 +121,14 @@ export class YummyBackend implements IGitOperations {
     this._onDidBranchChange.fire(branchName);
   }
 
-  async commit(message: string): Promise<void> {
-    // yummy commit -m <message> 使用显式消息
-    await this.exec(['commit', '-a', '-m', message]);
+  async commit(message?: string): Promise<void> {
+    if (message && message.trim()) {
+      // 使用显式消息：yummy commit -a -m <message>
+      await this.exec(['commit', '-a', '-m', message]);
+    } else {
+      // AI 自动生成：yummy commit -a
+      await this.exec(['commit', '-a']);
+    }
   }
 
   async addTag(tagName: string): Promise<void> {

@@ -40,7 +40,8 @@ interface WebviewMessage {
     | 'resetAndCreate'
     | 'saveWorkflowLink'
     | 'showError'
-    | 'requestGitInfo';
+    | 'requestGitInfo'
+    | 'openExternal';
   docId?: string;
   language?: SupportedLanguage;
   branch?: string;
@@ -56,6 +57,7 @@ interface WebviewMessage {
   meegleId?: string;
   prdBrief?: string;
   message?: string;
+  url?: string;
 }
 
 export class VisualizerViewProvider implements vscode.WebviewViewProvider {
@@ -266,6 +268,11 @@ export class VisualizerViewProvider implements vscode.WebviewViewProvider {
           }
           break;
         }
+        case 'openExternal':
+          if (message.url) {
+            vscode.env.openExternal(vscode.Uri.parse(message.url));
+          }
+          break;
         default:
           break;
       }

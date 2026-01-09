@@ -50,7 +50,7 @@
         },
         {
           "id": "development",
-          "label": "2. Development",
+          "label": "Development",
           "type": "process",
           "actions": [
             { "type": "GitCommit", "label": "提交代码", "style": "default" },
@@ -67,7 +67,7 @@
         },
         {
           "id": "testing",
-          "label": "3. Testing",
+          "label": "Testing",
           "type": "process",
           "actions": [
             { "type": "GitCommit", "label": "测试问题修复 & 提交", "style": "default" },
@@ -192,7 +192,7 @@
     },
     {
       "id": "development",
-      "label": "2. Development",
+      "label": "Development",
       "type": "process",
       "actions": [
         { "type": "GitCommit", "label": "提交代码", "style": "default" },
@@ -209,7 +209,7 @@
     },
     {
       "id": "testing",
-      "label": "3. Testing",
+      "label": "Testing",
       "type": "process",
       "actions": [
         { "type": "GitCommit", "label": "测试问题修复 & 提交", "style": "default" },

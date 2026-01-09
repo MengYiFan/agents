@@ -81,13 +81,35 @@
           },
           "default": [],
           "markdownDescription": "扩展的 context7 prompt 列表，支持通过 packageName/versionPattern/templatePath/content 定制。"
+        },
+        "mcpVisualizer.git.backend": {
+          "type": "string",
+          "enum": [
+            "git",
+            "yummy"
+          ],
+          "default": "git",
+          "markdownDescription": "Git 后端选择：`git` (simple-git) 或 `yummy` (AI 增强 CLI)。"
+        },
+        "mcpVisualizer.git.duplicateTagBehavior": {
+          "type": "string",
+          "enum": [
+            "autoDelete",
+            "confirmOverwrite"
+          ],
+          "default": "autoDelete",
+          "enumDescriptions": [
+            "自动删除重复 Tag 并重新创建",
+            "二次确认是否覆盖重复 Tag"
+          ],
+          "markdownDescription": "当 Tag 已存在时的处理方式。"
         }
       }
     }
   },
   "scripts": {
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
+    "compile": "tsc -p ./ && tsc-alias -p tsconfig.json",
+    "watch": "concurrently \"tsc -watch -p ./\" \"tsc-alias -p tsconfig.json --watch\"",
     "watch:webview": "npm run watch --prefix webview-ui",
     "lint": "eslint src --ext ts",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
@@ -106,6 +128,7 @@
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.1.3",
     "prettier": "^3.2.5",
+    "tsc-alias": "^1.8.16",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.3.3",
     "vsce": "^2.15.0"

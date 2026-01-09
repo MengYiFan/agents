@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Moon,
   Sun,
@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Book,
   GitBranch,
+  Tag,
 } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { PageHeader } from '@/components/common';
@@ -62,6 +63,39 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   // Git Backend State
   const [gitBackend, setGitBackend] = useState<'git' | 'yummy'>('git');
   const [isGitBackendOpen, setIsGitBackendOpen] = useState(false);
+
+  // Duplicate Tag Behavior State
+  const [duplicateTagBehavior, setDuplicateTagBehavior] = useState<
+    'autoDelete' | 'confirmOverwrite'
+  >('autoDelete');
+  const [isDuplicateTagOpen, setIsDuplicateTagOpen] = useState(false);
+
+  // Refs for click-outside detection
+  const gitBackendRef = useRef<HTMLDivElement>(null);
+  const duplicateTagRef = useRef<HTMLDivElement>(null);
+  const langRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (gitBackendRef.current && !gitBackendRef.current.contains(target)) {
+        setIsGitBackendOpen(false);
+      }
+      if (duplicateTagRef.current && !duplicateTagRef.current.contains(target)) {
+        setIsDuplicateTagOpen(false);
+      }
+      if (langRef.current && !langRef.current.contains(target)) {
+        setIsLangOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const getLanguageLabel = (l: string) => {
     return l === 'zh-CN' ? t('settings.language.chinese') : t('settings.language.english');
@@ -148,7 +182,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       </div>
 
       {/* Language Section */}
-      <div className="settings-language-section relative">
+      <div ref={langRef} className="settings-language-section relative">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 ml-1">
           {t('settings.language.title')}
         </h3>
@@ -250,65 +284,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
             </button>
           </div>
 
-          {/* Git Backend Dropdown */}
-          <div className="settings-git-backend-section relative">
-            <button
-              onClick={() => setIsGitBackendOpen(!isGitBackendOpen)}
-              className="w-full flex items-center justify-between p-4 bg-white dark:bg-[#1e293b] rounded-2xl border border-transparent hover:border-gray-200 dark:hover:border-slate-700 transition-all"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-cyan-50 dark:bg-cyan-900/20 flex items-center justify-center">
-                  <GitBranch className="w-5 h-5 text-cyan-500" />
-                </div>
-                <div>
-                  <div className="font-medium text-gray-900 dark:text-white">Git Backend</div>
-                  <div className="text-xs text-gray-500">Choose git or yummy CLI</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold px-3 py-1.5 bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 rounded-lg">
-                  {gitBackend === 'git' ? 'simple-git' : 'yummy'}
-                </span>
-                <ChevronRight
-                  size={16}
-                  className={`transition-transform text-gray-400 ${isGitBackendOpen ? 'rotate-90' : ''}`}
-                />
-              </div>
-            </button>
-
-            {isGitBackendOpen && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#1e293b] rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200">
-                <button
-                  onClick={() => {
-                    setGitBackend('git');
-                    setIsGitBackendOpen(false);
-                  }}
-                  className={`w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center justify-between ${gitBackend === 'git' ? 'text-blue-500 font-medium' : ''}`}
-                >
-                  <div>
-                    <div>simple-git</div>
-                    <div className="text-xs text-gray-400">Default Node.js Git wrapper</div>
-                  </div>
-                  {gitBackend === 'git' && <div className="w-2 h-2 rounded-full bg-blue-500" />}
-                </button>
-                <div className="h-px bg-gray-100 dark:bg-gray-700" />
-                <button
-                  onClick={() => {
-                    setGitBackend('yummy');
-                    setIsGitBackendOpen(false);
-                  }}
-                  className={`w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center justify-between ${gitBackend === 'yummy' ? 'text-blue-500 font-medium' : ''}`}
-                >
-                  <div>
-                    <div>yummy</div>
-                    <div className="text-xs text-gray-400">AI-powered Git workflow CLI</div>
-                  </div>
-                  {gitBackend === 'yummy' && <div className="w-2 h-2 rounded-full bg-blue-500" />}
-                </button>
-              </div>
-            )}
-          </div>
-
           {/* Auto-Save Toggle */}
           <div className="flex items-center justify-between p-4 bg-white dark:bg-[#1e293b] rounded-2xl border border-transparent hover:border-gray-200 dark:hover:border-slate-700 transition-all">
             <div className="flex items-center gap-3">
@@ -331,6 +306,150 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 }`}
               />
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Git Settings Section */}
+      <div className="settings-git-section">
+        <h3 className="settings-section-title text-sm font-semibold text-gray-900 dark:text-white mb-3 ml-1">
+          {t('settings.gitSettings.title')}
+        </h3>
+        <div className="settings-git-items space-y-3">
+          {/* Git Backend Dropdown */}
+          <div ref={gitBackendRef} className="settings-git-backend-item relative">
+            <button
+              onClick={() => setIsGitBackendOpen(!isGitBackendOpen)}
+              className="settings-item-button w-full flex items-center justify-between gap-4 p-4 bg-white dark:bg-[#1e293b] rounded-2xl border border-transparent hover:border-gray-200 dark:hover:border-slate-700 transition-all"
+            >
+              <div className="settings-item-left flex items-center gap-3 text-left">
+                <div className="settings-item-icon w-10 h-10 rounded-full bg-cyan-50 dark:bg-cyan-900/20 flex items-center justify-center flex-shrink-0">
+                  <GitBranch className="w-5 h-5 text-cyan-500" />
+                </div>
+                <div className="settings-item-content">
+                  <div className="settings-item-title font-medium text-gray-900 dark:text-white">
+                    {t('settings.gitSettings.backend.title')}
+                  </div>
+                  <div className="settings-item-desc text-xs text-gray-500">
+                    {t('settings.gitSettings.backend.description')}
+                  </div>
+                </div>
+              </div>
+              <div className="settings-item-right flex items-center gap-2 flex-shrink-0">
+                <span className="settings-item-value text-xs font-bold px-3 py-1.5 bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 rounded-lg whitespace-nowrap">
+                  {gitBackend === 'git' ? 'simple-git' : 'yummy'}
+                </span>
+                <ChevronRight
+                  size={16}
+                  className={`transition-transform text-gray-400 ${isGitBackendOpen ? 'rotate-90' : ''}`}
+                />
+              </div>
+            </button>
+
+            {isGitBackendOpen && (
+              <div className="settings-dropdown absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#1e293b] rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200">
+                <button
+                  onClick={() => {
+                    setGitBackend('git');
+                    setIsGitBackendOpen(false);
+                  }}
+                  className={`settings-dropdown-option w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center justify-between ${gitBackend === 'git' ? 'text-blue-500 font-medium' : ''}`}
+                >
+                  <div>
+                    <div>simple-git</div>
+                    <div className="text-xs text-gray-400">Default Node.js Git wrapper</div>
+                  </div>
+                  {gitBackend === 'git' && <div className="w-2 h-2 rounded-full bg-blue-500" />}
+                </button>
+                <div className="h-px bg-gray-100 dark:bg-gray-700" />
+                <button
+                  onClick={() => {
+                    setGitBackend('yummy');
+                    setIsGitBackendOpen(false);
+                  }}
+                  className={`settings-dropdown-option w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center justify-between ${gitBackend === 'yummy' ? 'text-blue-500 font-medium' : ''}`}
+                >
+                  <div>
+                    <div>yummy</div>
+                    <div className="text-xs text-gray-400">AI-powered Git workflow CLI</div>
+                  </div>
+                  {gitBackend === 'yummy' && <div className="w-2 h-2 rounded-full bg-blue-500" />}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Duplicate Tag Handling Dropdown */}
+          <div ref={duplicateTagRef} className="settings-duplicate-tag-item relative">
+            <button
+              onClick={() => setIsDuplicateTagOpen(!isDuplicateTagOpen)}
+              className="settings-item-button w-full flex items-center justify-between gap-4 p-4 bg-white dark:bg-[#1e293b] rounded-2xl border border-transparent hover:border-gray-200 dark:hover:border-slate-700 transition-all"
+            >
+              <div className="settings-item-left flex items-center gap-3 text-left">
+                <div className="settings-item-icon w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center flex-shrink-0">
+                  <Tag className="w-5 h-5 text-amber-500" />
+                </div>
+                <div className="settings-item-content">
+                  <div className="settings-item-title font-medium text-gray-900 dark:text-white">
+                    {t('settings.gitSettings.duplicateTag.title')}
+                  </div>
+                  <div className="settings-item-desc text-xs text-gray-500">
+                    {t('settings.gitSettings.duplicateTag.description')}
+                  </div>
+                </div>
+              </div>
+              <div className="settings-item-right flex items-center gap-2 flex-shrink-0">
+                <span className="settings-item-value text-xs font-bold px-3 py-1.5 bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 rounded-lg whitespace-nowrap">
+                  {duplicateTagBehavior === 'autoDelete'
+                    ? t('settings.gitSettings.duplicateTag.autoDeleteShort')
+                    : t('settings.gitSettings.duplicateTag.confirmOverwriteShort')}
+                </span>
+                <ChevronRight
+                  size={16}
+                  className={`transition-transform text-gray-400 ${isDuplicateTagOpen ? 'rotate-90' : ''}`}
+                />
+              </div>
+            </button>
+
+            {isDuplicateTagOpen && (
+              <div className="settings-dropdown absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#1e293b] rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200">
+                <button
+                  onClick={() => {
+                    setDuplicateTagBehavior('autoDelete');
+                    setIsDuplicateTagOpen(false);
+                  }}
+                  className={`settings-dropdown-option w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center justify-between ${duplicateTagBehavior === 'autoDelete' ? 'text-blue-500 font-medium' : ''}`}
+                >
+                  <div>
+                    <div>{t('settings.gitSettings.duplicateTag.autoDeleteShort')}</div>
+                    <div className="text-xs text-gray-400">
+                      {t('settings.gitSettings.duplicateTag.autoDelete')}
+                    </div>
+                  </div>
+                  {duplicateTagBehavior === 'autoDelete' && (
+                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                  )}
+                </button>
+                <div className="h-px bg-gray-100 dark:bg-gray-700" />
+                <button
+                  onClick={() => {
+                    setDuplicateTagBehavior('confirmOverwrite');
+                    setIsDuplicateTagOpen(false);
+                  }}
+                  className={`settings-dropdown-option w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center justify-between ${duplicateTagBehavior === 'confirmOverwrite' ? 'text-blue-500 font-medium' : ''}`}
+                >
+                  <div>
+                    <div>{t('settings.gitSettings.duplicateTag.confirmOverwriteShort')}</div>
+                    <div className="text-xs text-gray-400">
+                      {t('settings.gitSettings.duplicateTag.confirmOverwrite')}
+                    </div>
+                  </div>
+                  {duplicateTagBehavior === 'confirmOverwrite' && (
+                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -34,6 +34,21 @@
         "title": "自动保存日志"
       }
     },
+    "gitSettings": {
+      "title": "Git 设置",
+      "backend": {
+        "title": "Git 后端",
+        "description": "选择 Git 引擎"
+      },
+      "duplicateTag": {
+        "title": "重复 Tag",
+        "description": "Tag 已存在时",
+        "autoDeleteShort": "自动",
+        "autoDelete": "自动删除并重建",
+        "confirmOverwriteShort": "确认",
+        "confirmOverwrite": "覆盖前二次确认"
+      }
+    },
     "documentation": {
       "doc": "文档",
       "support": "帮助与支持"
@@ -59,7 +74,20 @@
     "setup": { "name": "初始化", "title": "初始化阶段", "description": "准备" },
     "development": { "name": "开发", "title": "开发阶段", "description": "编码" },
     "testing": { "name": "测试", "title": "测试阶段", "description": "验证" },
-    "uat": { "name": "验收", "title": "验收阶段", "description": "评审" },
+    "acceptance": { "name": "验收", "title": "验收阶段", "description": "评审" },
     "release": { "name": "发布", "title": "发布阶段", "description": "部署" }
+  },
+  "workflow": {
+    "initialize": "初始化工作流",
+    "startNew": "开始新工作流",
+    "createFeature": "创建新功能",
+    "configureDetails": "配置详情以生成分支。",
+    "onBranch": "当前分支为",
+    "initiateTask": "启动新开发任务以创建功能分支。",
+    "generatedBranch": "生成的分支",
+    "copyBranch": "复制分支名",
+    "branchCopied": "分支名已复制！",
+    "footerNote": "创建本地分支并生成 .context7 配置。",
+    "required": "为必填项"
   }
 }

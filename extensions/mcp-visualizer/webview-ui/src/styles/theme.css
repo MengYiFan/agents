@@ -100,6 +100,121 @@
   @apply appearance-none cursor-pointer;
 }
 
+/* Ant Design Select 覆盖样式 - Light Mode Fix */
+html.light .custom-theme-select .ant-select-selector,
+html.light .ant-select-selector {
+  background-color: #ffffff !important;
+  border-color: #d1d5db !important;
+  color: #111827 !important;
+}
+
+html.light .ant-select-dropdown {
+  background-color: #ffffff !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08) !important;
+}
+
+html.light .ant-select-item {
+  color: #111827 !important;
+}
+
+html.light .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+  background-color: #f3f4f6 !important;
+}
+
+html.light .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background-color: #dbeafe !important;
+  color: #1d4ed8 !important;
+}
+
+/* 强制清除可能的深色背景干扰 */
+html.light .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+  background-color: #ffffff !important;
+}
+
+/* Ant Design Steps 覆盖样式 - Light Mode Fix */
+html.light .ant-steps-item-finish .ant-steps-item-icon {
+  background-color: #22c55e !important;
+  border-color: #22c55e !important;
+}
+
+html.light .ant-steps-item-finish .ant-steps-item-icon > .ant-steps-icon {
+  color: #ffffff !important;
+}
+
+html.light .ant-steps-item-finish > .ant-steps-item-container > .ant-steps-item-tail::after {
+  background-color: #22c55e !important;
+}
+
+html.light .ant-steps-item-wait .ant-steps-item-icon {
+  background-color: #ffffff !important;
+  border-color: #d1d5db !important;
+}
+
+html.light .ant-steps-item-wait .ant-steps-item-icon > .ant-steps-icon {
+  color: #9ca3af !important;
+}
+
+html.light .ant-steps-item-process .ant-steps-item-icon {
+  background-color: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+}
+
+html.light .ant-steps-item-title {
+  color: #374151 !important;
+}
+
+/* Dark Mode Steps 样式 */
+html.dark .ant-steps-item-finish .ant-steps-item-icon {
+  background-color: #22c55e !important;
+  border-color: #22c55e !important;
+}
+
+html.dark .ant-steps-item-finish .ant-steps-item-icon > .ant-steps-icon {
+  color: #ffffff !important;
+}
+
+html.dark .ant-steps-item-finish > .ant-steps-item-container > .ant-steps-item-tail::after {
+  background-color: #22c55e !important;
+}
+
+/* Ant Design Card 覆盖样式 - Light Mode Fix */
+html.light .ant-card {
+  background-color: #ffffff !important;
+  border-color: #e5e7eb !important;
+}
+
+html.light .ant-card-head {
+  background-color: #f9fafb !important;
+  border-bottom-color: #e5e7eb !important;
+  color: #111827 !important;
+}
+
+html.light .ant-card-head-title {
+  color: #111827 !important;
+}
+
+html.light .ant-card-body {
+  background-color: #ffffff !important;
+  color: #374151 !important;
+}
+
+html.light .ant-alert {
+  background-color: #fffbeb !important;
+  border-color: #fde68a !important;
+}
+
+html.light .ant-alert-warning .ant-alert-message {
+  color: #92400e !important;
+}
+
+html.light .ant-alert-warning .ant-alert-description {
+  color: #b45309 !important;
+}
+
+html.light .ant-form-item-label > label {
+  color: #374151 !important;
+}
+
 /* =====================================================
    Cards (卡片)
    ===================================================== */

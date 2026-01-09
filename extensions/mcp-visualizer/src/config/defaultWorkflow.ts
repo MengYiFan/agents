@@ -10,14 +10,12 @@ const FEATURE_STEPS: IStepDefinition[] = [
       {
         id: 'plans',
         label: 'Technical Plans',
-        collapsible: true,
-        defaultCollapsed: true,
+        collapsible: false,
       },
       {
         id: 'advanced',
         label: 'Advanced Settings',
-        collapsible: true,
-        defaultCollapsed: false,
+        collapsible: false,
       },
     ],
     fields: [
@@ -84,7 +82,7 @@ const FEATURE_STEPS: IStepDefinition[] = [
   },
   {
     id: 'development',
-    label: '2. Development',
+    label: 'Development',
     type: 'process',
     actions: [
       {
@@ -107,7 +105,7 @@ const FEATURE_STEPS: IStepDefinition[] = [
   },
   {
     id: 'testing',
-    label: '3. Testing',
+    label: 'Testing',
     type: 'process',
     actions: [
       {

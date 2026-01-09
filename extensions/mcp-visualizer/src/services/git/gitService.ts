@@ -139,17 +139,39 @@ export class GitService implements IGitOperations {
   }
 
   /**
-   * 添加 Tag - 如果已存在则先删除再重新创建
+   * 添加 Tag - 根据配置处理重复 Tag
+   * @param tagName Tag 名称
    */
   public async addTag(tagName: string): Promise<void> {
     try {
+      // 获取配置：重复 Tag 处理方式
+      const config = vscode.workspace.getConfiguration('mcpVisualizer.git');
+      const duplicateTagBehavior = config.get<string>('duplicateTagBehavior', 'autoDelete');
+
       await this.retryWithLockCheck(async () => {
         // 检查 tag 是否已存在
         const tags = await this.git.tags();
         if (tags.all.includes(tagName)) {
-          console.log(`Tag '${tagName}' already exists. Deleting and recreating...`);
+          console.log(`Tag '${tagName}' already exists.`);
+
+          if (duplicateTagBehavior === 'confirmOverwrite') {
+            // 二次确认模式
+            const selection = await vscode.window.showWarningMessage(
+              `Tag '${tagName}' already exists. Do you want to overwrite it?`,
+              { modal: true },
+              'Overwrite',
+              'Cancel',
+            );
+
+            if (selection !== 'Overwrite') {
+              throw new Error(`Tag creation cancelled by user`);
+            }
+          }
+
           // 删除本地 tag
+          console.log(`Deleting existing tag '${tagName}'...`);
           await this.git.tag(['-d', tagName]);
+
           // 删除远程 tag (忽略错误，可能不存在)
           try {
             await this.git.push(['origin', `:refs/tags/${tagName}`]);
@@ -157,6 +179,7 @@ export class GitService implements IGitOperations {
             console.warn(`Failed to delete remote tag '${tagName}' (may not exist):`, e);
           }
         }
+
         // 创建新 tag
         await this.git.addTag(tagName);
       });
@@ -214,11 +237,27 @@ export class GitService implements IGitOperations {
     }
   }
 
-  public async listReleaseBranches(): Promise<string[]> {
+  /**
+   * 获取远程 release/ 分支列表
+   * @param fetchFirst 是否先 fetch 更新远程信息
+   */
+  public async listReleaseBranches(fetchFirst = true): Promise<string[]> {
     try {
-      const branches = await this.git.branchLocal();
-      return branches.all.filter((b) => b.startsWith('release/'));
+      // 先 fetch 最新的远程分支信息
+      if (fetchFirst) {
+        await this.git.fetch(['--prune']);
+      }
+
+      // 获取远程分支
+      const branches = await this.git.branch(['-r']);
+
+      // 过滤出 origin/release/ 开头的分支，去掉 origin/ 前缀
+      return branches.all
+        .filter((b) => b.startsWith('origin/release/'))
+        .map((b) => b.replace('origin/', ''));
     } catch (error) {
+      console.warn('Failed to list release branches:', error);
+
       return [];
     }
   }

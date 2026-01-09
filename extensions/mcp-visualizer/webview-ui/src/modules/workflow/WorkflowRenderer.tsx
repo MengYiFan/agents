@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Form } from 'antd';
 import { IWorkflowConfig, IWorkflowContext, IStepDefinition } from '@/types/workflow';
 import { useWorkflowActions } from '@/modules/workflow/hooks/useWorkflowActions';
+import { vscode } from '@/lib/vscode';
 import '@/modules/workflow/WorkflowRenderer.css';
 
 // Steps
@@ -27,7 +28,7 @@ export const WorkflowRenderer: React.FC<WorkflowRendererProps> = ({
   config,
   context,
   gitBranch,
-  releaseBranches = [],
+  releaseBranches: initialReleaseBranches = [],
   onBack,
   mode,
   onToggleTheme,
@@ -40,6 +41,10 @@ export const WorkflowRenderer: React.FC<WorkflowRendererProps> = ({
   // Track which step the user is currently viewing (READ-ONLY if != context.currentStep)
   const [viewingStepId, setViewingStepId] = useState<string>(context.currentStep);
 
+  // Release branches with local state for refresh
+  const [releaseBranches, setReleaseBranches] = useState<string[]>(initialReleaseBranches);
+  const [loadingBranches, setLoadingBranches] = useState(false);
+
   // Update viewing step when context changes (e.g. step transition)
   useEffect(() => {
     // If context.currentStep is 'init' (or 'setup' depending on config), verify mapping
@@ -47,12 +52,34 @@ export const WorkflowRenderer: React.FC<WorkflowRendererProps> = ({
     setViewingStepId(context.currentStep);
   }, [context.currentStep]);
 
+  // Update release branches when prop changes
+  useEffect(() => {
+    setReleaseBranches(initialReleaseBranches);
+  }, [initialReleaseBranches]);
+
   // Sync form data from context
   useEffect(() => {
     if (context.data) {
       form.setFieldsValue(context.data);
     }
   }, [context.data, form]);
+
+  // Listen for releaseBranches:update message
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      const message = event.data;
+      if (message.type === 'releaseBranches:update') {
+        setReleaseBranches(message.payload.releaseBranches);
+        setLoadingBranches(false);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, []);
 
   const currentStepId = context.currentStep;
 
@@ -73,6 +100,11 @@ export const WorkflowRenderer: React.FC<WorkflowRendererProps> = ({
     if (clickedIndex <= activeStepIndex) {
       setViewingStepId(stepId);
     }
+  };
+
+  const handleRefreshBranches = () => {
+    setLoadingBranches(true);
+    vscode.postMessage({ type: 'refreshReleaseBranches' });
   };
 
   // Common props for all steps
@@ -113,7 +145,15 @@ export const WorkflowRenderer: React.FC<WorkflowRendererProps> = ({
       return <GenericProcessStep {...commonProps} />;
 
     case 'release':
-      return <ReleaseStep {...commonProps} releaseBranches={releaseBranches} form={form} />;
+      return (
+        <ReleaseStep
+          {...commonProps}
+          releaseBranches={releaseBranches}
+          loadingBranches={loadingBranches}
+          onRefreshBranches={handleRefreshBranches}
+          form={form}
+        />
+      );
 
     default:
       return (

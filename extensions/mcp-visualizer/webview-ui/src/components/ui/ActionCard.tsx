@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowRightOutlined, LinkOutlined } from '@ant-design/icons';
 import { Popover } from 'antd';
+import { vscode } from '@/lib/vscode';
 
 export interface ActionCardProps {
   /** 卡片图标 */
@@ -64,10 +65,11 @@ export const ActionCard: React.FC<ActionCardProps> = ({
     return <ArrowRightOutlined className="text-sm" />;
   };
 
-  // 处理点击事件
+  // 处理点击事件 - 使用 vscode.postMessage 打开链接
   const handleClick = () => {
     if (href) {
-      window.open(href, '_blank');
+      // 在 VS Code webview 中使用 postMessage 打开外部链接
+      vscode.postMessage({ type: 'openExternal', url: href });
 
       return;
     }

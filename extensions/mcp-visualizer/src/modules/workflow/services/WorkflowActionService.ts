@@ -74,18 +74,28 @@ export class WorkflowActionService {
   }
 
   async handleGitCommit(action: IActionDefinition): Promise<void> {
-    // eslint-disable-line @typescript-eslint/no-unused-vars
-    const prefix = action.params?.prefix || '';
-    const msg = await vscode.window.showInputBox({
-      prompt: 'Enter commit message',
-      value: prefix,
-    });
-    if (!msg) {
-      return;
-    }
+    // 检查后端类型
+    const config = vscode.workspace.getConfiguration('mcpVisualizer.git');
+    const backend = config.get<string>('backend', 'git');
 
-    await this.gitService.commit(msg);
-    vscode.window.showInformationMessage('Commit successful');
+    if (backend === 'yummy') {
+      // Yummy 模式：AI 自动生成 commit message
+      await this.gitService.commit('');
+      vscode.window.showInformationMessage('Commit successful (AI-generated message)');
+    } else {
+      // simple-git 模式：弹窗输入
+      const prefix = action.params?.prefix || '';
+      const msg = await vscode.window.showInputBox({
+        prompt: 'Enter commit message',
+        value: prefix,
+      });
+      if (!msg) {
+        return;
+      }
+
+      await this.gitService.commit(msg);
+      vscode.window.showInformationMessage('Commit successful');
+    }
   }
 
   async handleTransition(action: IActionDefinition, context: IWorkflowContext): Promise<void> {

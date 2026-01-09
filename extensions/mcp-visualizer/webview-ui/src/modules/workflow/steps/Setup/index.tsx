@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from '@/hooks/useTranslation';
 import {
   Button,
   Card,
@@ -68,6 +69,7 @@ export const SetupStep: React.FC<SetupStepProps> = ({
   onToggleLocale,
   onSettings,
 }) => {
+  const { t } = useTranslation();
   const [showInitForm, setShowInitForm] = useState(false);
   const [branchPreview, setBranchPreview] = useState<string>('feature/...');
 
@@ -105,7 +107,7 @@ export const SetupStep: React.FC<SetupStepProps> = ({
 
   const copyBranchName = () => {
     navigator.clipboard.writeText(branchPreview);
-    message.success('Branch name copied!');
+    message.success(t('workflow.branchCopied'));
   };
 
   // Find the primary "Create Branch" action
@@ -116,7 +118,8 @@ export const SetupStep: React.FC<SetupStepProps> = ({
   // Helper to render dynamic fields
   const renderField = (field: any) => {
     const rules = [];
-    if (field.required) rules.push({ required: true, message: `${field.label} is required` });
+    if (field.required)
+      rules.push({ required: true, message: `${field.label} ${t('workflow.required')}` });
     if (field.pattern)
       rules.push({
         pattern: new RegExp(field.pattern),
@@ -145,7 +148,7 @@ export const SetupStep: React.FC<SetupStepProps> = ({
         inputComponent = (
           <Select
             options={field.options?.map((opt: string) => ({ label: opt, value: opt }))}
-            className="w-full"
+            className="w-full custom-theme-select"
             placeholder={field.placeholder}
           />
         );
@@ -194,7 +197,7 @@ export const SetupStep: React.FC<SetupStepProps> = ({
       currentStep={currentStep}
       gitBranch={gitBranch}
       onBack={onBack}
-      title={showInitForm ? 'Initialize Workflow' : 'Start New Workflow'}
+      title={showInitForm ? t('workflow.initialize') : t('workflow.startNew')}
       onStepClick={onStepClick}
       activeStepId={activeStepId}
       mode={mode}
@@ -218,14 +221,13 @@ export const SetupStep: React.FC<SetupStepProps> = ({
                 <PlayCircleOutlined />
               </div>
               <Title level={3} className="workflow-init-title !text-gray-900 dark:!text-gray-100">
-                Start New Workflow
+                {t('workflow.startNew')}
               </Title>
               <Paragraph
                 type="secondary"
                 className="workflow-init-desc !text-gray-500 dark:!text-gray-400"
               >
-                You are currently on <strong>{gitBranch}</strong>. Initiate a new development task
-                to create a feature branch.
+                {t('workflow.onBranch')} <strong>{gitBranch}</strong>. {t('workflow.initiateTask')}
               </Paragraph>
 
               <Button
@@ -237,7 +239,7 @@ export const SetupStep: React.FC<SetupStepProps> = ({
                   setShowInitForm(true);
                 }}
               >
-                Initialize Workflow
+                {t('workflow.initialize')}
               </Button>
             </Space>
           </Card>
@@ -246,10 +248,10 @@ export const SetupStep: React.FC<SetupStepProps> = ({
         <div className="form-wrapper max-w-2xl mx-auto pb-24">
           <div className="form-intro mb-6">
             <h1 className="intro-title text-xl font-bold text-gray-900 dark:text-white mb-1">
-              {currentStep.label || 'Create New Feature'}
+              {currentStep.label || t('workflow.createFeature')}
             </h1>
             <p className="intro-subtitle text-sm text-gray-500 dark:text-gray-400">
-              Configure details to generate a branch.
+              {t('workflow.configureDetails')}
             </p>
           </div>
 
@@ -341,7 +343,7 @@ export const SetupStep: React.FC<SetupStepProps> = ({
               <div className="branch-preview-card bg-gray-50 dark:bg-gray-800 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-3 mb-4 relative flex items-center justify-between">
                 <div className="preview-info flex flex-col min-w-0">
                   <span className="preview-label text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                    Generated Branch
+                    {t('workflow.generatedBranch')}
                   </span>
                   <div className="preview-value flex items-center gap-2 overflow-hidden">
                     <BranchesOutlined className="text-blue-500 text-sm" />
@@ -354,7 +356,7 @@ export const SetupStep: React.FC<SetupStepProps> = ({
                   </div>
                 </div>
 
-                <Tooltip title="Copy Branch Name">
+                <Tooltip title={t('workflow.copyBranch')}>
                   <Button
                     type="text"
                     size="small"
@@ -384,7 +386,7 @@ export const SetupStep: React.FC<SetupStepProps> = ({
 
               <div className="footer-note text-center mt-2">
                 <Text type="secondary" className="note-text text-[10px] text-gray-400">
-                  Starts a local branch & generates .context7 config.
+                  {t('workflow.footerNote')}
                 </Text>
               </div>
             </div>
