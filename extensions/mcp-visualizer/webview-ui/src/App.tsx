@@ -11,9 +11,8 @@ import { SegmentedControl } from '@/components/mcp-deck/SegmentedControl';
 import { MCPCard } from '@/components/mcp-deck/MCPCard';
 import { QuickActionCard } from '@/components/mcp-deck/QuickActionCard';
 import { activeServices, availableMCPs, quickActions } from '@/data';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '@/store';
-import { toggleTheme } from '@/store/slices/themeSlice';
+import { useAtom, useSetAtom } from 'jotai';
+import { themeAtom, toggleThemeAtom } from '@/atoms/themeAtom';
 import SettingsPage from '@/components/SettingsPage';
 import { I18nProvider, useTranslation } from '@/hooks/useTranslation';
 
@@ -153,8 +152,8 @@ function App() {
   const [workflowContext, setWorkflowContext] = useState<IWorkflowContext | null>(null);
   const [workflowBranch, setWorkflowBranch] = useState<string>('');
 
-  const dispatch = useDispatch();
-  const mode = useSelector((state: RootState) => state.theme.mode);
+  const [mode] = useAtom(themeAtom);
+  const toggleTheme = useSetAtom(toggleThemeAtom);
 
   // Refresh Git Info when entering settings
   useEffect(() => {
@@ -181,12 +180,9 @@ function App() {
           break;
         case 'gitInfoUpdated':
           setData((prev) => (prev ? { ...prev, gitInfo: message.gitInfo } : null));
-          // vscode.postMessage({ type: 'webview:ready' }); // No need to re-ready, generic update
           break;
         case 'themeChanged':
-          // Existing logic handled by ThemeProvider/Redux but keeping specifically for the class toggle if needed
-          // The Header component in legacy code handled this via Redux effect.
-          // We rely on the useSelector effect below or ThemeProvider.
+          // 主题变化现在由 Jotai atom 自动处理
           break;
       }
     };
@@ -194,6 +190,7 @@ function App() {
     window.addEventListener('message', handler);
     // Request initial data but don't block UI on it for the visual demo
     vscode.postMessage({ type: 'requestInitialData' });
+
     return () => window.removeEventListener('message', handler);
   }, []);
 
@@ -209,7 +206,7 @@ function App() {
   }, [mode]);
 
   const handleToggleTheme = () => {
-    dispatch(toggleTheme());
+    toggleTheme();
   };
 
   const handleToggleLocale = (lang?: string) => {

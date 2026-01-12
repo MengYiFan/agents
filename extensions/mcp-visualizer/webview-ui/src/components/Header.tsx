@@ -4,9 +4,8 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { vscode } from '@/lib/vscode';
 import { UiText } from '@/types';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '@/store';
-import { toggleTheme } from '@/store/slices/themeSlice';
+import { useAtom, useSetAtom } from 'jotai';
+import { themeAtom, toggleThemeAtom } from '@/atoms/themeAtom';
 
 interface HeaderProps {
   title?: string;
@@ -26,8 +25,8 @@ export function Header({
   authorizations = [],
   locale,
 }: HeaderProps) {
-  const dispatch = useDispatch();
-  const mode = useSelector((state: RootState) => state.theme.mode);
+  const [mode] = useAtom(themeAtom);
+  const toggleTheme = useSetAtom(toggleThemeAtom);
 
   useEffect(() => {
     if (mode === 'dark') {
@@ -40,7 +39,7 @@ export function Header({
   }, [mode]);
 
   const handleToggleTheme = () => {
-    dispatch(toggleTheme());
+    toggleTheme();
   };
 
   const handleLocaleChange = () => {

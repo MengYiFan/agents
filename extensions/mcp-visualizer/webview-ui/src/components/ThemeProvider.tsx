@@ -1,7 +1,7 @@
 import React from 'react';
 import { ConfigProvider, theme, App } from 'antd';
-import { useSelector } from 'react-redux';
-import { RootState } from '@/store';
+import { useAtomValue } from 'jotai';
+import { themeAtom } from '@/atoms/themeAtom';
 
 // 基础 VS Code 主题 token - 用于暗色模式
 const vscodeThemeToken = {
@@ -39,7 +39,7 @@ const darkModeColors = {
 };
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const mode = useSelector((state: RootState) => state.theme.mode);
+  const mode = useAtomValue(themeAtom);
   const isDark = mode === 'dark';
   const colors = isDark ? darkModeColors : lightModeColors;
 
