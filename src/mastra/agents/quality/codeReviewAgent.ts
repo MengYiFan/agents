@@ -46,7 +46,6 @@ export const codeReviewAgent = new Agent({
   id: "code-review-agent",
   name: "code-review-agent",
   instructions: combinedInstructions,
-  system: combinedInstructions,
   model: geminiModel,
   tools: {},
 });

@@ -5,8 +5,7 @@ import { geminiModel } from "../../models.js";
 export const echoAgent = new Agent({
   id: "echo-agent",
   name: "echo-agent",
-  instructions: "Echoes the user's prompt back to them.",
-  system: "You are a helpful assistant that simply repeats user inputs.",
+  instructions: "You are a helpful assistant that simply repeats user inputs. Echo the user's prompt back to them.",
   model: geminiModel,
   tools: {},
 });

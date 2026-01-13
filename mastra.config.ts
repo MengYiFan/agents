@@ -5,12 +5,12 @@ export default defineConfig({
   description: "Starter configuration generated without direct CLI access.",
   agents: [
     "echo-agent",
-    "summarizer-agent",
     "prompt-library-agent",
     "code-review-agent",
     "code-guidelines-mcp",
     "git-mcp-agent",
     "grafana-mcp-agent",
+    "sentry-mcp-agent",
   ],
   plugins: [],
 });

@@ -21,7 +21,7 @@ npm start             # Execute the compiled bundle (after running `npm run buil
 
 > ℹ️ The repository structure was assembled manually because the original environment could not execute `npx mastra@latest init`. Once dependencies are installed the scripts above behave like an official Mastra workspace.
 
-`src/index.ts` acts as a runnable sample. Executing `npm start` prints the responses from `echo-agent` and `summarizer-agent`, confirming that the runtime wiring works before you add new automation.
+`src/index.ts` acts as a runnable sample. Executing `npm start` prints the response from `echo-agent`, confirming that the runtime wiring works before you add new automation.
 
 ## Scripts
 
@@ -58,7 +58,6 @@ Agents are grouped by responsibility so future additions only require dropping a
 | Agent | Purpose | Location | Tools |
 | --- | --- | --- | --- |
 | `echo-agent` | Echoes any provided prompt. | [`src/agents/examples/echoAgent.ts`](./src/agents/examples/echoAgent.ts) | _None_ |
-| `summarizer-agent` | Produces concise bullet summaries. | [`src/agents/examples/summarizerAgent.ts`](./src/agents/examples/summarizerAgent.ts) | _None_ |
 | `prompt-library-agent` | Parses Markdown prompt files, extracts metadata comment blocks, and returns structured prompt definitions. | [`src/agents/examples/promptLibraryAgent.ts`](./src/agents/examples/promptLibraryAgent.ts) | `loadPrompt` (reads `prompts/<name>.md`) |
 | `code-review-agent` | Combines `instructions.md` with `prompts/codeReviewDefault.md` to produce Chinese review briefs. | [`src/agents/quality/codeReviewAgent.ts`](./src/agents/quality/codeReviewAgent.ts) | _None_ |
 | `code-guidelines-mcp` | Generates or updates a `.rules` document tailored to detected frameworks (Nuxt 2, Vue 2, MidwayJS, Egg.js). | [`src/agents/quality/codeGuidelinesMcp.ts`](./src/agents/quality/codeGuidelinesMcp.ts) | `injectCodeRulesDocument` |

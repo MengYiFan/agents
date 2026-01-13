@@ -128,16 +128,6 @@ async function runAgent(agentId, args) {
     finalMessages = [{ role: "user", content: "Hello from MCP client" }];
   }
 
-  // Short-circuit the test agent to guarantee deterministic Copilot checks
-  const lastUserText = getLastUserTextMessage(finalMessages);
-  if (
-    agentId === "test-prompt-agent" &&
-    typeof lastUserText === "string" &&
-    lastUserText.trim().toLowerCase() === "hello"
-  ) {
-    return { text: "Wooooo~" };
-  }
-
   return fetchJson(`${MASTRA_API_BASE}/agents/${agentId}/generate`, {
     method: "POST",
     body: JSON.stringify({

@@ -21,7 +21,7 @@ npm start             # 运行编译产物（需先执行 `npm run build`）
 
 > ℹ️ 由于初始化环境无法执行 `npx mastra@latest init`，目录由脚本手动搭建；依赖安装完成后，上述命令与官方模板一致。
 
-`src/index.ts` 提供了可执行示例。运行 `npm start` 会打印 `echo-agent` 与 `summarizer-agent` 的返回结果，用于确认运行时串接正确，再继续扩展自动化能力。
+`src/index.ts` 提供了可执行示例。运行 `npm start` 会打印 `echo-agent` 的返回结果，用于确认运行时串接正确，再继续扩展自动化能力。
 
 ## npm 脚本
 
@@ -58,7 +58,6 @@ npm start             # 运行编译产物（需先执行 `npm run build`）
 | 代理名称 | 主要作用 | 位置 | 工具 |
 | --- | --- | --- | --- |
 | `echo-agent` | 原样回显用户输入。 | [`src/agents/examples/echoAgent.ts`](./src/agents/examples/echoAgent.ts) | 无 |
-| `summarizer-agent` | 输出精炼的要点摘要。 | [`src/agents/examples/summarizerAgent.ts`](./src/agents/examples/summarizerAgent.ts) | 无 |
 | `prompt-library-agent` | 解析 Markdown 提示词，读取注释元数据并返回结构化结果。 | [`src/agents/examples/promptLibraryAgent.ts`](./src/agents/examples/promptLibraryAgent.ts) | `loadPrompt`（读取 `prompts/<name>.md`） |
 | `code-review-agent` | 合并 `instructions.md` 与 `prompts/codeReviewDefault.md`，生成中文审查要点。 | [`src/agents/quality/codeReviewAgent.ts`](./src/agents/quality/codeReviewAgent.ts) | 无 |
 | `code-guidelines-mcp` | 根据依赖特征生成或更新 `.rules` 规范文档，支持 Nuxt 2、Vue 2、MidwayJS、Egg.js。 | [`src/agents/quality/codeGuidelinesMcp.ts`](./src/agents/quality/codeGuidelinesMcp.ts) | `injectCodeRulesDocument` |

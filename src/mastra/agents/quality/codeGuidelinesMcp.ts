@@ -297,9 +297,7 @@ export const codeGuidelinesMcp = new Agent({
   id: "code-guidelines-mcp",
   name: "code-guidelines-mcp",
   instructions:
-    "当开发者需要注入或更新项目的代码规范时，调用 injectCodeRulesDocument 工具生成 .rules 文件。",
-  system:
-    "你是一名代码规范维护助手，负责确保项目根目录存在最新的 .rules 规范文档。评估需求后再调用工具，避免重复覆盖。",
+    "你是一名代码规范维护助手，负责确保项目根目录存在最新的 .rules 规范文档。当开发者需要注入或更新项目的代码规范时，调用 injectCodeRulesDocument 工具生成 .rules 文件。评估需求后再调用工具，避免重复覆盖。",
   model: geminiModel,
   tools: { injectCodeRulesDocument: injectCodeRulesDocumentTool },
 });
