@@ -2,13 +2,17 @@ import { Agent } from "@mastra/core/agent";
 import { z } from "zod";
 import {
   SentryMcpClient,
+  autoClassify,
+  autoClassifyAll,
   type SentryAnnotatedIssue,
   type SentryIssue,
   type SentryIssueAnnotation,
   type SentryIssueTaxonomy,
 } from "../../integrations/sentryMcp.js";
 
-type SentryAction = "fetchTopIssues" | "notifyHighRisk";
+// ============ 类型定义 ============
+
+type SentryAction = "fetchTopIssues" | "autoAnalyze" | "notifyHighRisk";
 
 interface SentryCredentialsInput {
   baseUrl?: string;
@@ -29,6 +33,7 @@ interface SentryNotificationConfig {
 
 interface SentryAgentInput {
   action: SentryAction;
+  useMcp?: boolean;
   limit?: number;
   credentials?: SentryCredentialsInput;
   taxonomyOverrides?: Partial<SentryIssueTaxonomy>;
@@ -43,6 +48,20 @@ interface FetchIssuesPayload {
   taxonomy: SentryIssueTaxonomy;
 }
 
+interface AutoAnalyzePayload {
+  action: "autoAnalyze";
+  issues: SentryIssue[];
+  annotations: Record<string, SentryIssueAnnotation>;
+  annotated: SentryAnnotatedIssue[];
+  taxonomy: SentryIssueTaxonomy;
+  summary: {
+    total: number;
+    bySeverity: Record<string, number>;
+    byType: Record<string, number>;
+    highRiskCount: number;
+  };
+}
+
 interface NotificationPreview {
   channel: "lark" | "email";
   status: "skipped" | "sent" | "prepared";
@@ -55,17 +74,88 @@ interface NotificationResultPayload {
   notifications: NotificationPreview[];
 }
 
-type SentryAgentResult = FetchIssuesPayload | NotificationResultPayload;
+type SentryAgentResult = FetchIssuesPayload | AutoAnalyzePayload | NotificationResultPayload;
+
+// ============ 辅助函数 ============
+
+function buildSummary(annotated: SentryAnnotatedIssue[]): AutoAnalyzePayload["summary"] {
+  const bySeverity: Record<string, number> = {};
+  const byType: Record<string, number> = {};
+  let highRiskCount = 0;
+
+  for (const issue of annotated) {
+    const severity = issue.riskLabel ?? issue.riskId ?? "unknown";
+    const type = issue.issueTypeLabel ?? issue.issueTypeId ?? "unknown";
+
+    bySeverity[severity] = (bySeverity[severity] ?? 0) + 1;
+    byType[type] = (byType[type] ?? 0) + 1;
+
+    if (issue.riskId === "critical" || issue.riskId === "major") {
+      highRiskCount += 1;
+    }
+  }
+
+  return {
+    total: annotated.length,
+    bySeverity,
+    byType,
+    highRiskCount,
+  };
+}
+
+function formatLarkMessage(issues: SentryAnnotatedIssue[]): string {
+  if (issues.length === 0) {
+    return "Sentry 高风险告警：当前无高风险问题";
+  }
+
+  const lines = issues.map((issue) => {
+    const risk = issue.riskLabel ?? issue.riskId ?? "未知";
+    const type = issue.issueTypeLabel ?? "";
+    const freq = issue.frequencyBandLabel ?? "";
+
+    return `• [${risk}] ${issue.title}${type ? ` (${type})` : ""}${freq ? ` - ${freq}` : ""}\n  ${issue.permalink ?? ""}`;
+  });
+
+  return `🚨 Sentry 高风险告警（${issues.length} 条）\n\n${lines.join("\n\n")}`;
+}
+
+function formatEmailBody(issues: SentryAnnotatedIssue[], groupBy: "risk" | "issueType"): string {
+  const grouped = issues.reduce<Record<string, SentryAnnotatedIssue[]>>((acc, issue) => {
+    const key = groupBy === "issueType"
+      ? issue.issueTypeLabel ?? issue.issueTypeId ?? "unknown"
+      : issue.riskLabel ?? issue.riskId ?? "unknown";
+    acc[key] = acc[key] ?? [];
+    acc[key].push(issue);
+
+    return acc;
+  }, {});
+
+  return Object.entries(grouped)
+    .map(([group, items]) => {
+      const lines = items
+        .map((item) => `- ${item.title} (${item.frequency ?? "?"} 次) ${item.permalink ?? ""}`)
+        .join("\n");
+
+      return `【${group}】\n${lines}`;
+    })
+    .join("\n\n");
+}
+
+// ============ Tool 定义 ============
 
 const sentryTool = {
   id: "sentryMcp",
   description:
-    "通过 Sentry MCP 获取 Issue 并基于可配置枚举进行打标，可对高风险问题触发 Lark/邮件通知。自动缓存登录态以减少重复认证。",
+    "获取 Sentry Issue 并进行自动分类打标，支持高风险问题的 Lark/邮件告警。",
   inputSchema: z.object({
     action: z
-      .enum(["fetchTopIssues", "notifyHighRisk"])
-      .describe("要执行的动作：获取 issue 或发送告警。"),
-    limit: z.number().optional().describe("获取 issue 的数量，默认 20。"),
+      .enum(["fetchTopIssues", "autoAnalyze", "notifyHighRisk"])
+      .describe("要执行的动作：获取 Issue、自动分析、或发送告警。"),
+    useMcp: z
+      .boolean()
+      .optional()
+      .describe("是否使用官方 Sentry MCP Server，默认 true。设为 false 使用 REST API。"),
+    limit: z.number().optional().describe("获取 Issue 的数量，默认 20。"),
     credentials: z
       .object({
         baseUrl: z.string().optional(),
@@ -75,13 +165,19 @@ const sentryTool = {
         defaultLimit: z.number().optional(),
       })
       .optional()
-      .describe("可选的 Sentry MCP 凭据覆盖项，支持自定义 baseUrl、token、组织和项目。"),
-    taxonomyOverrides: z.record(z.any()).optional().describe("可选的枚举值词典覆盖项，用于风险、问题类型、频率分档。"),
+      .describe("Sentry 凭据配置，可覆盖环境变量。"),
+    taxonomyOverrides: z
+      .record(z.any())
+      .optional()
+      .describe("自定义分类词典覆盖（riskLevels, issueTypes, frequencyBands）。"),
     annotations: z
       .record(z.any())
       .optional()
-      .describe("按 issue id 提交的打标结果（riskId、issueTypeId、frequencyBandId 等）。"),
-    issues: z.array(z.any()).optional().describe("待通知的已打标 issue 列表，当 action=notifyHighRisk 时必填。"),
+      .describe("手动打标覆盖项，按 Issue ID 映射。若不提供则使用自动分类。"),
+    issues: z
+      .array(z.any())
+      .optional()
+      .describe("待通知的 Issue 列表，action=notifyHighRisk 时必填。"),
     notificationConfig: z
       .object({
         larkWebhook: z.string().optional(),
@@ -92,11 +188,12 @@ const sentryTool = {
         groupBy: z.enum(["risk", "issueType"]).optional(),
       })
       .optional()
-      .describe("告警通知配置，包括 Lark webhook 和邮件收件人等。"),
+      .describe("告警通知配置。"),
   }),
   execute: async ({
     action,
-    limit,
+    useMcp = true,
+    limit = 20,
     credentials,
     taxonomyOverrides,
     annotations,
@@ -109,111 +206,136 @@ const sentryTool = {
       organizationSlug: credentials?.organizationSlug,
       projectSlug: credentials?.projectSlug,
       defaultLimit: credentials?.defaultLimit,
+      useMcp,
     });
 
-    switch (action) {
-      case "fetchTopIssues": {
-        const fetched = await client.fetchIssues(limit);
-        const taxonomy = client.buildTaxonomy(taxonomyOverrides);
-        return { action, issues: fetched, taxonomy };
-      }
-      case "notifyHighRisk": {
-        if (!issues || issues.length === 0) {
-          throw new Error("notifyHighRisk 需要传入已打标的 issues。先调用 fetchTopIssues 并完成打标。");
+    try {
+      switch (action) {
+        case "fetchTopIssues": {
+          const fetchedIssues = await client.fetchIssues(limit);
+          const taxonomy = client.buildTaxonomy(taxonomyOverrides);
+
+          return { action, issues: fetchedIssues, taxonomy };
         }
 
-        const annotated = client.annotateIssues(issues, annotations ?? {}, taxonomyOverrides);
-        const taxonomy = client.buildTaxonomy(taxonomyOverrides);
-        const highRiskIds = new Set(
-          taxonomy.riskLevels
-            .filter((entry) => entry.severity === "high" || entry.severity === "critical")
-            .map((entry) => entry.id),
-        );
+        case "autoAnalyze": {
+          const { issues: fetchedIssues, annotations: autoAnnotations, annotated } = await client.fetchAndClassify(limit);
 
-        const highRiskIssues = annotated.filter((issue) => issue.riskId && highRiskIds.has(issue.riskId));
-        const notifications: NotificationPreview[] = [];
+          const finalAnnotations = annotations
+            ? { ...autoAnnotations, ...annotations }
+            : autoAnnotations;
 
-        if (notificationConfig?.larkWebhook) {
-          const payload = {
-            msg_type: "text",
-            content: {
-              text:
-                notificationConfig.larkTemplate ??
-                `Sentry 高风险告警（${highRiskIssues.length} 条）：\n` +
-                highRiskIssues
-                  .map((item) => `${item.title} [${item.riskLabel ?? item.riskId}] -> ${item.permalink ?? ""}`)
-                  .join("\n"),
-            },
+          const finalAnnotated = annotations
+            ? client.annotateIssues(fetchedIssues, finalAnnotations, taxonomyOverrides)
+            : annotated;
+
+          const taxonomy = client.buildTaxonomy(taxonomyOverrides);
+          const summary = buildSummary(finalAnnotated);
+
+          return {
+            action,
+            issues: fetchedIssues,
+            annotations: finalAnnotations,
+            annotated: finalAnnotated,
+            taxonomy,
+            summary,
           };
+        }
 
-          try {
-            const response = await fetch(notificationConfig.larkWebhook, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload),
-            });
-            if (!response.ok) {
-              const detail = await response.text();
-              notifications.push({
-                channel: "lark",
-                status: "skipped",
-                detail: `Lark 通知发送失败：${response.status} ${detail}`,
-              });
-            } else {
-              notifications.push({ channel: "lark", status: "sent", detail: "已通过 Lark Webhook 发送。" });
-            }
-          } catch (error) {
-            notifications.push({ channel: "lark", status: "skipped", detail: String(error) });
+        case "notifyHighRisk": {
+          if (!issues || issues.length === 0) {
+            throw new Error("notifyHighRisk 需要传入 issues。先调用 autoAnalyze 获取已分类的 Issue 列表。");
           }
-        } else {
-          notifications.push({ channel: "lark", status: "skipped", detail: "未配置 Lark webhook，跳过。" });
+
+          const finalAnnotations = annotations ?? autoClassifyAll(issues);
+          const annotated = client.annotateIssues(issues, finalAnnotations, taxonomyOverrides);
+          const taxonomy = client.buildTaxonomy(taxonomyOverrides);
+
+          const highRiskIds = new Set(
+            taxonomy.riskLevels
+              .filter((entry) => entry.severity === "high" || entry.severity === "critical")
+              .map((entry) => entry.id),
+          );
+
+          const highRiskIssues = annotated.filter((issue) => issue.riskId && highRiskIds.has(issue.riskId));
+          const notifications: NotificationPreview[] = [];
+
+          if (notificationConfig?.larkWebhook) {
+            const message = notificationConfig.larkTemplate ?? formatLarkMessage(highRiskIssues);
+            const payload = { msg_type: "text", content: { text: message } };
+
+            try {
+              const response = await fetch(notificationConfig.larkWebhook, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+              });
+
+              if (!response.ok) {
+                const detail = await response.text();
+                notifications.push({
+                  channel: "lark",
+                  status: "skipped",
+                  detail: `Lark 发送失败：${response.status} ${detail}`,
+                });
+              } else {
+                notifications.push({ channel: "lark", status: "sent", detail: "已通过 Lark Webhook 发送。" });
+              }
+            } catch (error) {
+              notifications.push({ channel: "lark", status: "skipped", detail: String(error) });
+            }
+          } else {
+            notifications.push({ channel: "lark", status: "skipped", detail: "未配置 Lark webhook。" });
+          }
+
+          if (notificationConfig?.emailRecipients?.length) {
+            const subjectPrefix = notificationConfig.emailSubjectPrefix ?? "[Sentry] 高风险告警";
+            const emailBody = formatEmailBody(highRiskIssues, notificationConfig.groupBy ?? "risk");
+
+            notifications.push({
+              channel: "email",
+              status: "prepared",
+              detail: `From: ${notificationConfig.emailFrom ?? "sentry-bot"}\nTo: ${notificationConfig.emailRecipients.join(", ")}\nSubject: ${subjectPrefix}\n\n${emailBody}`,
+            });
+          } else {
+            notifications.push({ channel: "email", status: "skipped", detail: "未配置邮件收件人。" });
+          }
+
+          return { action, notifiedIssues: highRiskIssues, notifications };
         }
 
-        if (notificationConfig?.emailRecipients?.length) {
-          const subjectPrefix = notificationConfig.emailSubjectPrefix ?? "[Sentry] 高风险告警";
-          const grouped = highRiskIssues.reduce<Record<string, SentryAnnotatedIssue[]>>((acc, issue) => {
-            const key =
-              notificationConfig.groupBy === "issueType"
-                ? issue.issueTypeLabel ?? issue.issueTypeId ?? "unknown"
-                : issue.riskLabel ?? issue.riskId ?? "unknown";
-            acc[key] = acc[key] ?? [];
-            acc[key].push(issue);
-            return acc;
-          }, {});
-
-          const emailBody = Object.entries(grouped)
-            .map(([group, items]) => {
-              const lines = items
-                .map((item) => `- ${item.title} (${item.frequency ?? "?"} 次) ${item.permalink ?? ""}`)
-                .join("\n");
-              return `【${group}】\n${lines}`;
-            })
-            .join("\n\n");
-
-          notifications.push({
-            channel: "email",
-            status: "prepared",
-            detail: `From: ${notificationConfig.emailFrom ?? "sentry-bot"}\nTo: ${notificationConfig.emailRecipients.join(", ")}\nSubject: ${subjectPrefix}\n\n${emailBody}`,
-          });
-        } else {
-          notifications.push({ channel: "email", status: "skipped", detail: "未配置邮件收件人，跳过。" });
-        }
-
-        return { action, notifiedIssues: highRiskIssues, notifications };
+        default:
+          throw new Error(`未知的 Sentry 动作：${action}`);
       }
-      default:
-        throw new Error(`未知的 Sentry 动作：${action}`);
+    } finally {
+      await client.disconnect();
     }
   },
 };
+
+// ============ Agent 定义 ============
 
 import { geminiModel } from "../../models.js";
 
 export const sentryMcpAgent = new Agent({
   id: "sentry-mcp-agent",
   name: "sentry-mcp-agent",
-  instructions:
-    "你是 Sentry Issue 的分析与预警专家。通过 Sentry MCP 拉取最新问题，优先检查 top20，并按照风险、问题类型、频率等枚举词典完成打标。保持登录态，确保授权有效；高风险问题要准备 Lark 和邮件通知摘要。所有枚举值须使用提供的词典或覆盖项，必要时给出补充说明与下一步行动建议。1) 默认获取并分析最近的前 20 条 issue；2) 输出时要列出风险等级、问题类型、频率分档，并说明判定依据；3) 对高风险问题给出通知摘要和责任人建议；4) 可以按需请求自定义枚举词典或告警配置。",
+  instructions: `你是 Sentry Issue 分析与预警专家。
+
+核心能力：
+1. **autoAnalyze**（推荐）：一键获取 Issue + 自动分类 + 生成分析报告
+2. **fetchTopIssues**：仅获取原始 Issue 列表
+3. **notifyHighRisk**：对高风险 Issue 发送 Lark/邮件告警
+
+自动分类规则：
+- 风险等级：基于 level (fatal/error/warning) + userCount
+- 问题类型：基于 title/culprit 关键词匹配（网络/依赖/代码健壮性等）
+- 频率分档：基于 frequency 阈值
+
+使用建议：
+1. 默认使用 autoAnalyze 获取完整分析报告
+2. 重点关注 summary.highRiskCount 和 critical/major 级别的问题
+3. 对高风险问题调用 notifyHighRisk 发送告警`,
   model: geminiModel,
   tools: { sentryMcp: sentryTool },
 });
