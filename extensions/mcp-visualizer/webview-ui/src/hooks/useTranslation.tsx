@@ -51,9 +51,10 @@ export function I18nProvider({
 
   const [locale, setLocaleState] = useState<Locale>(normalizeLocale(initialLocale));
 
-  // 同步外部 locale 变化
+  // 同步外部 locale 变化（仅在值实际变化时更新）
   useEffect(() => {
-    setLocaleState(normalizeLocale(initialLocale));
+    const normalized = normalizeLocale(initialLocale);
+    setLocaleState((prev) => (prev !== normalized ? normalized : prev));
   }, [initialLocale]);
 
   const setLocale = useCallback(

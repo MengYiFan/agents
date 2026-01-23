@@ -130,7 +130,7 @@ export function HomePage({
                 onBack={() => setActiveTab('list')}
                 mode={mode}
                 onToggleTheme={onToggleTheme}
-                locale={data?.locale === 'zh-CN' ? 'CN' : 'EN'}
+                locale={locale === 'zh-CN' ? 'CN' : 'EN'}
                 onToggleLocale={() => onToggleLocale()}
                 onSettings={onSettings}
               />

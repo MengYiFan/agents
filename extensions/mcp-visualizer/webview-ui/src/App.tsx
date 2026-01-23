@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { vscode } from '@/lib/vscode';
 import { InitialData } from '@/types';
 import { IWorkflowConfig, IWorkflowContext } from '@/types/workflow';
@@ -98,10 +98,10 @@ function App() {
   };
 
   // 处理 I18nProvider 的 locale 变化回调
-  const handleLocaleChange = (newLocale: 'en-US' | 'zh-CN') => {
+  const handleLocaleChange = useCallback((newLocale: 'en-US' | 'zh-CN') => {
     setLocale(newLocale);
     vscode.postMessage({ type: 'switchLocale', language: newLocale });
-  };
+  }, []);
 
   return (
     <ThemeProvider>
